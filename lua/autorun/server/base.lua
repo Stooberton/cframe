@@ -25,7 +25,8 @@ local function Pop(Contraption, Entity) print("        Pop", Contraption, Entity
 	Contraption.Count = Contraption.Count-1
 		print(Contraption.Count)
 
-	Entity.Contraption = nil
+	Entity.CFramework.Contraption = nil
+	if not Entity.CFramework.Connections then Entity.CFramework = nil end
 
 	hook.Run("OnContraptionPopped", Contraption, Entity)
 
@@ -41,7 +42,13 @@ local function Append(Contraption, Entity) print("        Append", Contraption, 
 	Contraption.Entities[Entity] = true
 	Contraption.Count = Contraption.Count+1
 
-	Entity.Contraption = Contraption
+	if Entity.CFramework then Entity.CFramework.Contraption = Contraption
+	else
+		Entity.CFramework = {
+			Contraption = Contraption,
+			Connections = {}
+		}
+	end
 
 	hook.Run("OnContraptionAppended", Contraption, Entity)
 end
@@ -64,22 +71,14 @@ local function Merge(A, B) print("        Merge")
 	end
 end
 
-local function FloodFill(Entity, Filter, Entities) -- Depth first
-	Entities[Entity] = true
+local function FloodFill(Entity, Filter) -- Depth first
+	Filter[Entity] = true
 
-	for _, V in pairs(Entity.Constraints) do
-		if not Filter[V] then
-			Filter[V] = true
-
-			local A = V.Ent1
-			local B = V.Ent2
-			
-			if IsValid(A) then FloodFill(A, Filter, Entities) end
-			if IsValid(B) then FloodFill(B, Filter, Entities) end
-		end
+	for Entity in pairs(Entity.CFramework.Connections) do
+		if IsValid(Entity) and not Filter[Entity] then FloodFill(A, Filter) end
 	end
 
-	return Entities
+	return Filter
 end
 
 local function TestConnection(Target, Open, Closed, Count) -- Breadth first
@@ -91,12 +90,8 @@ local function TestConnection(Target, Open, Closed, Count) -- Breadth first
 		Open[Entity]   = nil
 		Closed[Entity] = true
 		
-		for _, Constraint in pairs(Entity.Constraints) do
-			local A = Constraint.Ent1
-			local B = Constraint.Ent2
-
-			if IsValid(A) and not Closed[A] then Open[A] = true end
-			if IsValid(B) and not Closed[B] then Open[B] = true end
+		for ConEnt in pairs(Entity.CFramework.Connections) do
+			if IsValid(ConEnt) and not Closed[Entity] then Open[Entity] = true end
 		end
 	end
 
@@ -105,14 +100,91 @@ local function TestConnection(Target, Open, Closed, Count) -- Breadth first
 	return false, Closed, Count
 end
 
-hook.Add("OnEntityCreated", "CFrameCreated", function(Constraint)
+local function OnConnect(A, B)
+	local Ac = A.CFramework.Contraption
+	local Bc = B.CFramework.Contraption
+
+	if Ac and Bc then
+		if Ac ~= Bc then Merge(Ac, Bc) -- Connecting two existing contraptions
+		else
+			local AConnect = A.CFramework.Connections
+			local BConnect = B.CFramework.Connections
+
+			AConnect[B] = AConnect[B]+1
+			BConnect[A] = BConnect[A]+1
+
+			return
+		end
+	elseif Ac then Append(Ac, B) -- Only contraption Ac exists, add entity B to it
+	elseif Bc then Append(Bc, A) -- Only contraption Bc exists, add entity A to it
+	else
+		-- Neither entity has a contraption, make a new one and add them to it
+		local Cont = CreateContraption()
+
+		Append(Cont, A)
+		Append(Cont, B)
+	end
+
+	A.CFramework.Connections[B] = 1
+	B.CFramework.Connections[A] = 1
+end
+
+local function OnDisconnect(A, B)
+	-- Proving if A is still connected to the same contraption as B
+	local AConnections = A.CFramework.Connections
+	local BConnections = B.CFramework.Connections
+
+	if AConnections[B] > 1 then 
+		local Num = AConnections[B]-1
+
+		AConnections[B] = Num
+		BConnections[A] = Num
+
+		return -- These two entities are still connected, no need for further checking
+	else -- These two entities are no longer connected directly
+		AConnections[B] = nil
+		BConnections[A] = nil
+
+		local Cont = A.CFramework.Contraption
+		Pop(Cont, A)
+		Pop(Cont, B)
+	end
+
+
+	local Source, Sink
+	if #AConnections <= #BConnections then Source, Sink = A, B
+	else Source, Sink = B, A end
+
+	-- Flood filling until we find the other entity
+	-- If the other entity is not found, the entities collected during the flood fill are made into a new contraption
+	print("Test Connection")
+	local Connected, Collection, Count = TestConnection(Sink, table.Copy(Source.Connections), {}, 0)
+
+	if not Connected then -- The two entities are no longer connected and we have created two separate contraptions
+		print("Not connected")
+		local To   = CreateContraption()
+		local From = Source.CFramework.Contraption
+
+		if From.Count-Count < Count then
+			print("Flood Fill", Count, From.Count-Count)
+			Collection = FloodFill(Sink, {})
+		end
+		
+		for Ent in pairs(Collection) do
+			Pop(From, Ent)
+			Append(To, Ent)
+		end
+	else print("connected") end
+end
+
+
+hook.Add("OnEntityCreated", "CFramework Created", function(Constraint)
 	if Constraint:GetClass() == "phys_constraint" then print("On Constraint Created")
 		-- We must wait because the Constraint's information is set after the constraint is created
 		timer.Simple(0, function()
 			if not IsValid(Constraint) then return end
 			
-			local A = Constraint.Ent1
-			local B = Constraint.Ent2
+			local A, B = Constraint.Ent1, Constraint.Ent2
 
 			-- Contraptions consist of multiple entities not one
 			if not IsValid(A) or not IsValid(B) then
@@ -120,91 +192,24 @@ hook.Add("OnEntityCreated", "CFrameCreated", function(Constraint)
 				return
 			end
 
-			local Ac = A.Contraption
-			local Bc = B.Contraption
-
-			if Ac and Bc then
-				if Ac ~= Bc then Merge(Ac, Bc) -- Connecting two existing contraptions, merge the smaller one into the bigger one
-				else return end -- Same contraption
-			elseif Ac then Append(Ac, B) -- Only contraption Ac exists, add entity B to it
-			elseif Bc then Append(Bc, A) -- Only contraption Bc exists, add entity A to it
-			else
-				-- Neither entity has a contraption, make a new one and add them to it
-				local Cont = CreateContraption()
-
-				Append(Cont, A)
-				Append(Cont, B)
-			end
+			OnConnect(A, B)
 		end)
 	end
 end)
 
-hook.Add("EntityRemoved", "CFrameRemoved", function(Constraint)
+hook.Add("EntityRemoved", "CFramework Removed", function(Constraint)
 	if Constraint:GetClass() == "phys_constraint" then  print("On Constraint removed")
-		local A = Constraint.Ent1
-		local B = Constraint.Ent2
+		local A, B = Constraint.Ent1, Constraint.Ent2
 
 		if not IsValid(A) or not IsValid(B) then return end
 
-		-- From here we will determine if entity A is still connected to entity B by any means
-		local Source, Sink
-		if #A.Constraints <= #B.Constraints then Source, Sink = A, B
-		else Source, Sink = B, A end
-
-		local Open = {}
-			for _, V in pairs(Source.Constraints) do
-				if V ~= Constraint then
-					if IsValid(V.Ent1) then Open[V.Ent1] = true end
-					if IsValid(V.Ent2) then Open[V.Ent2] = true end
-				end
-			end
-
-		if not next(Open) then -- Entity A has no constraints left
-			print("        No constraints left on A")
-			local Cont  = A.Contraption
-			local Count = Cont.Count
-
-			Pop(Cont, A)
-
-			if Count == 2 then
-				print("        No constraints left on B")
-				Pop(Cont, B)
-			end -- If these are the last two entities and A is no longer constrained then B must not be either
-
-			return -- Short circuit, no further proof that the two entities aren't connected is needed
-		end
-
-		-- From here we will prove whether or not the two entities are still connected to the same contraption
-		print("Test Connection")
-		local Connected, Collection, Count = TestConnection(Sink, Open, {[Constraint] = true}, 0)
-
-		if not Connected then -- The two entities are no longer connected and we have created two separate contraptions
-			print("Not connected")
-			local To   = CreateContraption()
-			local From = Source.Contraption
-
-			if Source.Contraption.Count-Count < Count then
-				print("Flood Fill", Count, Source.Contraption.Count-Count)
-				Collection = FloodFill(Sink, {[Constraint] = true}, {})
-			end
-
-			for Ent in pairs(Collection) do
-				Pop(From, Ent)
-				Append(To, Ent)
-			end
-		else print("connected") end
+		OnDisconnect(A, B)
 	end
 end)
 
-hook.Add("OnParent", "CFrame OnParent", function(Child, Parent) print("OnParent")
-	
-end)
-
-hook.Add("OnUnparent", "CFrame UnParent", function(Child, Parent) print("OnUnparent")
-
-end)
-
-hook.Add("Initialize", "CFrame Init", function()
+hook.Add("OnParent", "CFramework OnParent", function(Child, Parent) if IsValid(Child) then OnConnect(Child, Parent) end end)
+hook.Add("OnUnparent", "CFramework UnParent", function(Child, Parent) if IsValid(Child) then OnDisconnect(Child, Parent) end end)
+hook.Add("Initialize", "CFramework Init", function()
 	local Meta = FindMetaTable("Entity")
 	
 	Meta.LegacyParent = Meta.SetParent
@@ -212,12 +217,12 @@ hook.Add("Initialize", "CFrame Init", function()
 	function Meta:SetParent(Parent, Attachment)
 		local OldParent = self:GetParent()
 
+		if IsValid(OldParent) then hook.Run("OnUnparent", self, OldParent) end
+		
 		self:LegacyParent(Parent, Attachment)
 
-		if IsValid(OldParent) then hook.Run("OnUnParent", self, OldParent) end
-
-		hook.Run("OnParent", self, Parent)
+		if IsValid(Parent)then hook.Run("OnParent", self, Parent) end
 	end
 
-	hook.Remove("Initialize", "CFrame Init")
+	hook.Remove("Initialize", "CFramework Init")
 end)
