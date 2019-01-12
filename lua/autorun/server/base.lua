@@ -1,9 +1,14 @@
-contraption = {
-	Count = 0,
-	Contraptions = {}
-}
+contraption = contraption or {}
+	contraption.Count = 0
+	contraption.Contraptions = {}
+	contraption.Modules = {}
+--------------------------------------------------
+
 local Contraptions = contraption.Contraptions
+local Modules      = contraption.Modules
 local Filter = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger filters
+
+--------------------------------------------------
 
 local function CreateContraption()
 	contraption.Count = contraption.Count+1
@@ -102,9 +107,11 @@ end
 local function OnConnect(A, B) print("OnConnect", A, B)
 	local Ac = A.CFramework and A.CFramework.Contraption or nil
 	local Bc = B.CFramework and B.CFramework.Contraption or nil
+	local Contraption, NewConnection
 
 	if Ac and Bc then
-		if Ac ~= Bc then Merge(Ac, Bc) -- Connecting two existing contraptions
+		if Ac ~= Bc then
+			Contraption = Merge(Ac, Bc) -- Connecting two existing contraptions, return the resulting contraption
 		else
 			local AConnect = A.CFramework.Connections
 			local BConnect = B.CFramework.Connections
@@ -112,13 +119,18 @@ local function OnConnect(A, B) print("OnConnect", A, B)
 			AConnect[B] = AConnect[B] and AConnect[B]+1 or 1
 			BConnect[A] = BConnect[A] and BConnect[A]+1 or 1
 
-			return
+			Contraption = Ac
 		end
-	elseif Ac then Append(Ac, B) -- Only contraption Ac exists, add entity B to it
-	elseif Bc then Append(Bc, A) -- Only contraption Bc exists, add entity A to it
+	elseif Ac then
+		Append(Ac, B) -- Only contraption Ac exists, add entity B to it
+		Contraption = Ac
+	elseif Bc then
+		Append(Bc, A) -- Only contraption Bc exists, add entity A to it
+		Contraption = Bc
 	else
 		-- Neither entity has a contraption, make a new one and add them to it
-		local Cont = CreateContraption()
+		Contraption   = CreateContraption()
+		NewConnection = true
 
 		Append(Cont, A)
 		Append(Cont, B)
@@ -126,6 +138,8 @@ local function OnConnect(A, B) print("OnConnect", A, B)
 
 	A.CFramework.Connections[B] = 1
 	B.CFramework.Connections[A] = 1
+
+	for _, V in pairs(Modules.Connect) do V(Contraption, NewConnection, A, B) end
 end
 
 local function OnDisconnect(A, B) print("OnDisconnect", A, B)
