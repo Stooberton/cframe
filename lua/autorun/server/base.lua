@@ -1,7 +1,7 @@
 contraption = contraption or {}
 	contraption.Count = 0
 	contraption.Contraptions = {}
-	contraption.Modules = {}
+	contraption.Modules = contraption.Modules or {}
 --------------------------------------------------
 
 local Contraptions = contraption.Contraptions
@@ -19,27 +19,27 @@ local function CreateContraption()
 		Entities = {}
 	}
 
-	print("    Create Contraption", Cont)
 	Contraptions[Cont] = true
-	hook.Run("OnContraptionCreated", Cont)
+
+	for _, V in pairs(Modules.Create) do V(Contraption) end
+
 	return Cont
 end
 
 local function Pop(Contraption, Entity) print("        Pop", Contraption, Entity)
 	Contraption.Entities[Entity] = nil
 	Contraption.Count = Contraption.Count-1
-		print(Contraption.Count)
 
 	Entity.CFramework.Contraption = nil
 	if not Entity.CFramework.Connections then Entity.CFramework = nil end
 
-	hook.Run("OnContraptionPopped", Contraption, Entity)
+	for _, V in pairs(Modules.Disconnect) do V(Contraption, Entity) end
 
 	if Contraption.Count == 0 then print("    Contraption Removed")
 		Contraptions[Contraption] = nil
 		contraption.Count = contraption.Count-1
 
-		hook.Run("OnContraptionRemoved", Contraption)
+		for _, V in pairs(Modules.Destroy) do V(Contraption) end
 	end
 end
 
@@ -55,7 +55,7 @@ local function Append(Contraption, Entity) print("        Append", Contraption, 
 		}
 	end
 
-	hook.Run("OnContraptionAppended", Contraption, Entity)
+	for _, V in pairs(Modules.Connect) do V(Contraption, Entity) end
 end
 
 local function Merge(A, B) print("        Merge")
@@ -138,8 +138,6 @@ local function OnConnect(A, B) print("OnConnect", A, B)
 
 	A.CFramework.Connections[B] = 1
 	B.CFramework.Connections[A] = 1
-
-	for _, V in pairs(Modules.Connect) do V(Contraption, NewConnection, A, B) end
 end
 
 local function OnDisconnect(A, B) print("OnDisconnect", A, B)
@@ -208,13 +206,11 @@ hook.Add("OnEntityCreated", "CFramework Created", function(Constraint)
 			
 			local A, B = Constraint.Ent1, Constraint.Ent2
 
-			-- Contraptions consist of multiple entities not one
-			if not IsValid(A) or not IsValid(B) then
-				print("Invalid entities")
-				return
-			end
+			if not IsValid(A) or not IsValid(B) then return end -- Contraptions consist of multiple entities not one
+			if A == B then return end -- We also don't care about constraints attaching an entity to itself, see above
 
 			OnConnect(A, B)
+			hook.Run("OnConstraintCreated", Constraint)
 		end)
 	end
 end)
@@ -222,13 +218,13 @@ hook.Add("EntityRemoved", "CFramework Removed", function(Constraint)
 	if Constraint:GetClass() == "phys_constraint" then  print("On Constraint removed")
 		local A, B = Constraint.Ent1, Constraint.Ent2
 
-		if not IsValid(A) or not IsValid(B) then return end
+		if not IsValid(A) or not IsValid(B) then return end -- Probably a KeepUpright or something weird, which we don't care about
+		if A == B then return end -- We also don't care about constraints attaching an entity to itself
 
 		OnDisconnect(A, B)
+		hook.Run("OnConstraintRemoved", Constraint)
 	end
 end)
-hook.Add("OnParent", "CFramework OnParent", function(Child, Parent) if IsValid(Child) and not Filter[Child:GetClass()] then OnConnect(Child, Parent) end end)
-hook.Add("OnUnparent", "CFramework UnParent", function(Child, Parent) if IsValid(Child) and not Filter[Child:GetClass()] then OnDisconnect(Child, Parent) end end)
 hook.Add("Initialize", "CFramework Init", function()
 	local Meta = FindMetaTable("Entity")
 
@@ -237,11 +233,17 @@ hook.Add("Initialize", "CFramework Init", function()
 	function Meta:SetParent(Parent, Attachment)
 		local OldParent = self:GetParent()
 
-		if IsValid(OldParent) then hook.Run("OnUnparent", self, OldParent) end
+		if IsValid(OldParent) and not Filter[OldParent:GetClass()] and not Filter[self:GetClass()] then
+			OnDisconnect(self, Parent)
+			hook.Run("OnUnparent", self, OldParent)
+		end
 		
 		self:LegacyParent(Parent, Attachment)
 
-		if IsValid(Parent)then hook.Run("OnParent", self, Parent) end
+		if IsValid(Parent) and not Filter[Parent:GetClass()] and not Filter[self:GetClass()] then
+			OnConnect(self, Parent)
+			hook.Run("OnParent", self, Parent)
+		end
 	end
 
 	hook.Remove("Initialize", "CFramework Init")
