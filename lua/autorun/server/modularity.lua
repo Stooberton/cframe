@@ -1,4 +1,9 @@
-contraption = contraption or {Modules = {}}
+contraption = contraption or {Modules = {
+	Connect = {},
+	Disconnect = {},
+	Create = {},
+	Destroy = {}
+}}
 
 local Modules = contraption.Modules
 
@@ -26,11 +31,6 @@ function contraption.Module(Name)
 	if Modules.Destroy[Name] then return true end
 
 	return false
-end
-
--- Return a table of all modules
-function contraption.Modules()
-	return Modules
 end
 
 

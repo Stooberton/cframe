@@ -1,9 +1,11 @@
 -- If an entity is parented but has a constraint other than a nocollide/keepupright, it retains physics (has gravity/mass/collisions)
 local function IsPhysical(Ent)
 	if Ent:GetParent() then
-		for _, V in pairs(Ent.Constraints) do
-			if V.Type ~= "NoCollide" and V.Type ~= "KeepUpright" then
-				return true
+		if Ent.Constraints then
+			for _, V in pairs(Ent.Constraints) do
+				if V.Type ~= "NoCollide" and V.Type ~= "KeepUpright" then
+					return true
+				end
 			end
 		end
 
@@ -14,11 +16,11 @@ local function IsPhysical(Ent)
 end
 
 local function OnConnect(Contraption, Entity)
-	local Phys  = IsPhysical(Ent)
+	local Phys  = IsPhysical(Entity)
 	local Mass  = Contraption.Mass
 	local Delta = IsValid(Entity:GetPhysicsObject()) and Entity:GetPhysicsObject():GetMass() or 0
 
-	Ent.CF.Physical = Phys
+	Entity.CFramework.IsPhysical = Phys
 
 	Mass.Total = Mass.Total + Delta
 
@@ -27,7 +29,7 @@ local function OnConnect(Contraption, Entity)
 end
 
 local function OnDisconnect(Contraption, Entity)
-	local Phys  = Entity.CF.IsPhysical
+	local Phys  = Entity.CFramework.IsPhysical
 	local Mass  = Contraption.Mass
 	local Delta = IsValid(Entity:GetPhysicsObject()) and Entity:GetPhysicsObject():GetMass() or 0
 
@@ -56,8 +58,8 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 		Meta.LegacyMass = Meta.SetMass
 
 	function Meta:SetMass(NewMass)
-		if self:GetEntity().CF then
-			local CF    = self:GetEntity().CF
+		if self:GetEntity().CFramework then
+			local CF    = self:GetEntity().CFramework
 			local Mass  = CF.Contraption.Mass
 			local Delta = NewMass - self:GetMass()
 
@@ -74,20 +76,20 @@ end)
 hook.Add("OnConstraintCreated", "CFrame Mass Module", function(Constraint) -- Entity may become "Physical"
 	local A, B = Constraint.Ent1, Constraint.Ent2
 
-	if not A.CF.IsPhysical and Constraint.Type ~= "NoCollide" and Constraint.Type ~= "KeepUpright" then
-		A.CF.IsPhysical = true
+	if not A.CFramework.IsPhysical and Constraint.Type ~= "NoCollide" and Constraint.Type ~= "KeepUpright" then
+		A.CFramework.IsPhysical = true
 
-		local Mass  = A.CF.Contraption.Mass
+		local Mass  = A.CFramework.Contraption.Mass
 		local Delta = IsValid(A:GetPhysicsObject()) and A:GetPhysicsObject():GetMass() or 0
 		
 		Mass.Physical = Mass.Physical + Delta
 		Mass.Parented = Mass.Parented - Delta		
 	end
 
-	if not B.CF.IsPhysical and Constraint.Type ~= "NoCollide" and Constraint.Type ~= "KeepUpright" then
-		B.CF.IsPhysical = true
+	if not B.CFramework.IsPhysical and Constraint.Type ~= "NoCollide" and Constraint.Type ~= "KeepUpright" then
+		B.CFramework.IsPhysical = true
 
-		local Mass  = B.CF.Contraption.Mass
+		local Mass  = B.CFramework.Contraption.Mass
 		local Delta = IsValid(B:GetPhysicsObject()) and B:GetPhysicsObject():GetMass() or 0
 		
 		Mass.Physical = Mass.Physical + Delta
@@ -98,13 +100,13 @@ end)
 hook.Add("OnConstraintRemoved", "CFrame Mass Module", function(Constraint) -- Entity may become "Parented"
 	local A, B = Constraint.Ent1, Constraint.Ent2
 
-	if A.CF and A.CF.IsPhysical and Constraint.Type ~= "NoCollide" and Constraint.Type ~= "KeepUpright" then
+	if A.CFramework and A.CFramework.Contraption and A.CFramework.IsPhysical and Constraint.Type ~= "NoCollide" and Constraint.Type ~= "KeepUpright" then
 		local Phys = IsPhysical(A)
 
 		if not Phys then
-			A.CF.IsPhysical = false
+			A.CFramework.IsPhysical = false
 
-			local Mass  = A.CF.Contraption.Mass
+			local Mass  = A.CFramework.Contraption.Mass
 			local Delta = IsValid(A:GetPhysicsObject()) and A:GetPhysicsObject():GetMass() or 0
 			
 			Mass.Physical = Mass.Physical - Delta
@@ -112,13 +114,13 @@ hook.Add("OnConstraintRemoved", "CFrame Mass Module", function(Constraint) -- En
 		end
 	end
 
-	if B.CF and B.CF.IsPhysical and Constraint.Type ~= "NoCollide" and Constraint.Type ~= "KeepUpright" then
+	if B.CFramework and B.CFramework.Contraption and B.CFramework.IsPhysical and Constraint.Type ~= "NoCollide" and Constraint.Type ~= "KeepUpright" then
 		local Phys = IsPhysical(B)
 
 		if not Phys then
-			B.CF.IsPhysical = false
+			B.CFramework.IsPhysical = false
 
-			local Mass  = B.CF.Contraption.Mass
+			local Mass  = B.CFramework.Contraption.Mass
 			local Delta = IsValid(B:GetPhysicsObject()) and B:GetPhysicsObject():GetMass() or 0
 			
 			Mass.Physical = Mass.Physical - Delta
@@ -128,10 +130,10 @@ hook.Add("OnConstraintRemoved", "CFrame Mass Module", function(Constraint) -- En
 end)
 
 hook.Add("OnParent", "CFrame Mass Module", function(Child, Parent) -- Entity may become "Parented"
-	if Child.CF.IsPhysical then
-		Child.CF.IsPhysical = false
+	if Child.CFramework.IsPhysical then
+		Child.CFramework.IsPhysical = false
 
-		local Mass  = Child.CF.Contraption.Mass
+		local Mass  = Child.CFramework.Contraption.Mass
 		local Delta = IsValid(Child:GetPhysicsObject()) and Child:GetPhysicsObject():GetMass() or 0
 		
 		Mass.Physical = Mass.Physical - Delta
@@ -140,11 +142,11 @@ hook.Add("OnParent", "CFrame Mass Module", function(Child, Parent) -- Entity may
 end)
 
 hook.Add("OnUnparent", "CFrame Mass Module", function(Child, Parent) -- Entity may become "Physical"
-	if Child.CF then -- If it's still part of a contraption it must be physical as you cannot have more than one parent
-		A.CF.IsPhysical = true
+	if Child.CFramework and Child.CFramework.Contraption then -- If it's still part of a contraption it must be physical as you cannot have more than one parent
+		Child.CFramework.IsPhysical = true
 
-		local Mass  = A.CF.Contraption.Mass
-		local Delta = IsValid(A:GetPhysicsObject()) and A:GetPhysicsObject():GetMass() or 0
+		local Mass  = Child.CFramework.Contraption.Mass
+		local Delta = IsValid(Child:GetPhysicsObject()) and Child:GetPhysicsObject():GetMass() or 0
 		
 		Mass.Physical = Mass.Physical + Delta
 		Mass.Parented = Mass.Parented - Delta

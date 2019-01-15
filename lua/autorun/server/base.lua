@@ -1,7 +1,12 @@
 contraption = contraption or {}
 	contraption.Count = 0
 	contraption.Contraptions = {}
-	contraption.Modules = contraption.Modules or {}
+	contraption.Modules = contraption.Modules or {
+		Connect = {},
+		Disconnect = {},
+		Create = {},
+		Destroy = {}
+	}
 --------------------------------------------------
 
 local Contraptions = contraption.Contraptions
@@ -13,17 +18,17 @@ local Filter = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger
 local function CreateContraption()
 	contraption.Count = contraption.Count+1
 
-	local Cont = {
+	local Contraption = {
 		IsContraption = true,
 		Count = 0,
 		Entities = {}
 	}
 
-	Contraptions[Cont] = true
+	Contraptions[Contraption] = true
 
 	for _, V in pairs(Modules.Create) do V(Contraption) end
 
-	return Cont
+	return Contraption
 end
 
 local function Pop(Contraption, Entity) print("        Pop", Contraption, Entity)
@@ -130,10 +135,9 @@ local function OnConnect(A, B) print("OnConnect", A, B)
 	else
 		-- Neither entity has a contraption, make a new one and add them to it
 		Contraption   = CreateContraption()
-		NewConnection = true
 
-		Append(Cont, A)
-		Append(Cont, B)
+		Append(Contraption, A)
+		Append(Contraption, B)
 	end
 
 	A.CFramework.Connections[B] = 1
@@ -234,7 +238,7 @@ hook.Add("Initialize", "CFramework Init", function()
 		local OldParent = self:GetParent()
 
 		if IsValid(OldParent) and not Filter[OldParent:GetClass()] and not Filter[self:GetClass()] then
-			OnDisconnect(self, Parent)
+			OnDisconnect(self, OldParent)
 			hook.Run("OnUnparent", self, OldParent)
 		end
 		
