@@ -82,6 +82,8 @@ local function Merge(A, B) print("        Merge")
 end
 
 local function FloodFill(Entity, Filter) -- Depth first
+	if not IsValid(Entity) then return Filter end
+
 	Filter[Entity] = true
 
 	for Entity in pairs(Entity.CFramework.Connections) do
@@ -112,36 +114,30 @@ end
 local function OnConnect(A, B) print("OnConnect", A, B)
 	local Ac = A.CFramework and A.CFramework.Contraption or nil
 	local Bc = B.CFramework and B.CFramework.Contraption or nil
-	local Contraption, NewConnection
 
 	if Ac and Bc then
-		if Ac ~= Bc then
-			Contraption = Merge(Ac, Bc) -- Connecting two existing contraptions, return the resulting contraption
-		else
-			local AConnect = A.CFramework.Connections
-			local BConnect = B.CFramework.Connections
-
-			AConnect[B] = AConnect[B] and AConnect[B]+1 or 1
-			BConnect[A] = BConnect[A] and BConnect[A]+1 or 1
-
-			Contraption = Ac
-		end
+		if Ac ~= Bc then Merge(Ac, Bc) end -- Connecting two existing contraptions, return the resulting contraption
+		-- Otherwise they're the same contraption, do nothing
 	elseif Ac then
 		Append(Ac, B) -- Only contraption Ac exists, add entity B to it
-		Contraption = Ac
 	elseif Bc then
 		Append(Bc, A) -- Only contraption Bc exists, add entity A to it
-		Contraption = Bc
 	else
 		-- Neither entity has a contraption, make a new one and add them to it
-		Contraption   = CreateContraption()
+		local Contraption = CreateContraption()
 
 		Append(Contraption, A)
 		Append(Contraption, B)
 	end
 
-	A.CFramework.Connections[B] = 1
-	B.CFramework.Connections[A] = 1
+	local AConnect = A.CFramework.Connections
+	local BConnect = B.CFramework.Connections
+	
+	if AConnect[B] then AConnect[B] = AConnect[B]+1
+				   else AConnect[B] = 1 end
+
+	if BConnect[A] then BConnect[A] = BConnect[A]+1
+				   else BConnect[A] = 1 end
 end
 
 local function OnDisconnect(A, B) print("OnDisconnect", A, B)
@@ -201,9 +197,13 @@ local function OnDisconnect(A, B) print("OnDisconnect", A, B)
 	end
 end
 
+local ConstraintTypes = {
+	phys_lengthconstraint = true,
+	phys_constraint       = true
+}
 
 hook.Add("OnEntityCreated", "CFramework Created", function(Constraint)
-	if Constraint:GetClass() == "phys_constraint" then print("On Constraint Created")
+	if ConstraintTypes[Constraint:GetClass()] then print("On Constraint Created")
 		-- We must wait because the Constraint's information is set after the constraint is created
 		timer.Simple(0, function()
 			if not IsValid(Constraint) then return end
@@ -218,8 +218,9 @@ hook.Add("OnEntityCreated", "CFramework Created", function(Constraint)
 		end)
 	end
 end)
+
 hook.Add("EntityRemoved", "CFramework Removed", function(Constraint)
-	if Constraint:GetClass() == "phys_constraint" then  print("On Constraint removed")
+	if ConstraintTypes[Constraint:GetClass()] then print("On Constraint removed")
 		local A, B = Constraint.Ent1, Constraint.Ent2
 
 		if not IsValid(A) or not IsValid(B) then return end -- Probably a KeepUpright or something weird, which we don't care about
@@ -229,6 +230,7 @@ hook.Add("EntityRemoved", "CFramework Removed", function(Constraint)
 		hook.Run("OnConstraintRemoved", Constraint)
 	end
 end)
+
 hook.Add("Initialize", "CFramework Init", function()
 	local Meta = FindMetaTable("Entity")
 

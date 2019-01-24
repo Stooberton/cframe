@@ -1,6 +1,6 @@
 -- If an entity is parented but has a constraint other than a nocollide/keepupright, it retains physics (has gravity/mass/collisions)
 local function IsPhysical(Ent)
-	if Ent:GetParent() then
+	if IsValid(Ent:GetParent()) then
 		if Ent.Constraints then
 			for _, V in pairs(Ent.Constraints) do
 				if V.Type ~= "NoCollide" and V.Type ~= "KeepUpright" then
