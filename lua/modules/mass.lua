@@ -62,11 +62,16 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 			local CF    = self:GetEntity().CFramework
 			local Mass  = CF.Contraption.Mass
 			local Delta = NewMass - self:GetMass()
+			
+			local NewTotal = Mass.Total + Delta
 
-			Mass.Total = Mass.Total + Delta
+			if NewTotal <= 0 then return end -- Sanity checking because Duplicating does some freaky shit
+
+
+			Mass.Total = NewTotal
 
 			if CF.IsPhysical then Mass.Physical = Mass.Physical + Delta
-			else Mass.Parented = Mass.Parented + Delta end
+							 else Mass.Parented = Mass.Parented + Delta end
 		end
 
 		self:LegacyMass(NewMass)
@@ -135,7 +140,7 @@ hook.Add("OnParent", "CFrame Mass Module", function(Child, Parent) -- Entity may
 
 		local Mass  = Child.CFramework.Contraption.Mass
 		local Delta = IsValid(Child:GetPhysicsObject()) and Child:GetPhysicsObject():GetMass() or 0
-		
+
 		Mass.Physical = Mass.Physical - Delta
 		Mass.Parented = Mass.Parented + Delta
 	end
