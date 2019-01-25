@@ -1,6 +1,18 @@
 contraption = contraption or {}
 	contraption.Count = 0
 	contraption.Contraptions = {}
+	contraption.ConstraintTypes = {
+		phys_lengthconstraint = true,
+		phys_constraint = true,
+		phys_hinge = true,
+		phys_ragdollconstraint = true,
+		gmod_winch_controller = true,
+		phys_spring = true,
+		phys_slideconstraint = true,
+		phys_torque = true,
+		phys_pulleyconstraint = true,
+		phys_ballsocket = true
+	}
 	contraption.Modules = contraption.Modules or {
 		Connect = {},
 		Disconnect = {},
@@ -9,9 +21,10 @@ contraption = contraption or {}
 	}
 --------------------------------------------------
 
-local Contraptions = contraption.Contraptions
-local Modules      = contraption.Modules
-local Filter = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger filters
+local Contraptions    = contraption.Contraptions
+local Modules         = contraption.Modules
+local Filter          = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger filters
+local ConstraintTypes = contraption.ConstraintTypes
 
 --------------------------------------------------
 
@@ -31,7 +44,7 @@ local function CreateContraption()
 	return Contraption
 end
 
-local function Pop(Contraption, Entity) print("        Pop", Contraption, Entity)
+local function Pop(Contraption, Entity)
 	Contraption.Entities[Entity] = nil
 	Contraption.Count = Contraption.Count-1
 
@@ -40,7 +53,7 @@ local function Pop(Contraption, Entity) print("        Pop", Contraption, Entity
 
 	for _, V in pairs(Modules.Disconnect) do V(Contraption, Entity) end
 
-	if Contraption.Count == 0 then print("    Contraption Removed")
+	if Contraption.Count == 0 then
 		Contraptions[Contraption] = nil
 		contraption.Count = contraption.Count-1
 
@@ -48,7 +61,7 @@ local function Pop(Contraption, Entity) print("        Pop", Contraption, Entity
 	end
 end
 
-local function Append(Contraption, Entity) print("        Append", Contraption, Entity)
+local function Append(Contraption, Entity)
 	Contraption.Entities[Entity] = true
 	Contraption.Count = Contraption.Count+1
 
@@ -111,7 +124,7 @@ local function TestConnection(Target, Open, Closed, Count) -- Breadth first
 	return false, Closed, Count
 end
 
-local function OnConnect(A, B) print("OnConnect", A, B)
+local function OnConnect(A, B)
 	local Ac = A.CFramework and A.CFramework.Contraption or nil
 	local Bc = B.CFramework and B.CFramework.Contraption or nil
 
@@ -140,7 +153,7 @@ local function OnConnect(A, B) print("OnConnect", A, B)
 				   else BConnect[A] = 1 end
 end
 
-local function OnDisconnect(A, B) print("OnDisconnect", A, B)
+local function OnDisconnect(A, B)
 	-- Proving if A is still connected to the same contraption as B
 	local AConnections = A.CFramework.Connections
 	local BConnections = B.CFramework.Connections
@@ -167,24 +180,23 @@ local function OnDisconnect(A, B) print("OnDisconnect", A, B)
 				Pop(Contraption, B)
 				SS = true
 			end
-		if SS then print("Not connected, short circuit") return end
+		if SS then return end
 	end
-
 
 	local Source, Sink
 	if #AConnections <= #BConnections then Source, Sink = A, B
 	else Source, Sink = B, A end
 
+	print("FLOOD FILLING")
 	-- Flood filling until we find the other entity
 	-- If the other entity is not found, the entities collected during the flood fill are made into a new contraption
 	local Connected, Collection, Count = TestConnection(Sink, table.Copy(Source.CFramework.Connections), {[Source] = true}, 0)
 	if not Connected then -- The two entities are no longer connected and we have created two separate contraptions
-		print("Not connected")
 		local To   = CreateContraption()
 		local From = Contraption
 
 		if From.Count-Count < Count then
-			print("Flood Fill", Count, From.Count-Count)
+			print("Flood Fill Again", Count, From.Count-Count)
 			Collection = FloodFill(Sink, {})
 		end
 		
@@ -192,18 +204,11 @@ local function OnDisconnect(A, B) print("OnDisconnect", A, B)
 			Pop(From, Ent)
 			Append(To, Ent)
 		end
-	else
-		print("Connected")
 	end
 end
 
-local ConstraintTypes = {
-	phys_lengthconstraint = true,
-	phys_constraint       = true
-}
-
 hook.Add("OnEntityCreated", "CFramework Created", function(Constraint)
-	if ConstraintTypes[Constraint:GetClass()] then print("On Constraint Created")
+	if ConstraintTypes[Constraint:GetClass()] then
 		-- We must wait because the Constraint's information is set after the constraint is created
 		timer.Simple(0, function()
 			if not IsValid(Constraint) then return end
@@ -220,7 +225,7 @@ hook.Add("OnEntityCreated", "CFramework Created", function(Constraint)
 end)
 
 hook.Add("EntityRemoved", "CFramework Removed", function(Constraint)
-	if ConstraintTypes[Constraint:GetClass()] then print("On Constraint removed")
+	if ConstraintTypes[Constraint:GetClass()] then
 		local A, B = Constraint.Ent1, Constraint.Ent2
 
 		if not IsValid(A) or not IsValid(B) then return end -- Probably a KeepUpright or something weird, which we don't care about

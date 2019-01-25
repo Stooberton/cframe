@@ -33,6 +33,8 @@ function contraption.Module(Name)
 	return false
 end
 
+function contraption.AddConstraint(Name) contraption.ConstraintTypes[Name] = true end
+function contraption.RemoveConstraint(Name) contraption.ConstraintTypes[Name] = nil end
 
 for K, V in pairs(file.Find("modules/*", "LUA")) do
 	if string.Left(V, 2) ~= "cl" then
