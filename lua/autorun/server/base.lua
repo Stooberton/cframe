@@ -19,14 +19,15 @@ contraption = contraption or {}
 		Create = {},
 		Destroy = {}
 	}
---------------------------------------------------
+
+-------------------------------------------------- Localization
 
 local Contraptions    = contraption.Contraptions
 local Modules         = contraption.Modules
 local Filter          = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger filters
 local ConstraintTypes = contraption.ConstraintTypes
 
---------------------------------------------------
+-------------------------------------------------- Contraption creation, removal and addition
 
 local function CreateContraption()
 	contraption.Count = contraption.Count+1
@@ -94,53 +95,84 @@ local function Merge(A, B) print("        Merge")
 	end
 end
 
-local function FloodFill(Entity, Filter) -- Depth first
+-------------------------------------------------- Logic
+
+local function FF(Entity, Filter) -- Depth first
 	if not IsValid(Entity) then return Filter end
 
 	Filter[Entity] = true
 
 	for Entity in pairs(Entity.CFramework.Connections) do
-		if IsValid(Entity) and not Filter[Entity] then FloodFill(A, Filter) end
+		if IsValid(Entity) and not Filter[Entity] then FF(A, Filter) end
 	end
 
 	return Filter
 end
 
-local function TestConnection(Target, Open, Closed, Count) -- Breadth first
-	for Ent in pairs(Open) do
-		if Ent == Target then return true end
+local function BFS(Start, Goal)
+	local Closed = {}
+	local Open   = {};	for K in pairs(Start.CF.Connections) do Open[K] = true end -- Quick copy
+	local Count  = #Open
 
-		Count       = Count+1
-		Open[Ent]   = nil
-		Closed[Ent] = true
+	while next(Open) do
+		local Node = next(Open)
+
+		Open[Node] = nil
+
+		if not IsValid(Node) then continue end
+		if Node == Goal then return true end
+
+		Closed[Node] = true
 		
-		for ConEnt in pairs(Ent.CFramework.Connections) do
-			if IsValid(ConEnt) and not Closed[ConEnt] then Open[ConEnt] = true end
+		for K in pairs(Node.CFramework.Connections) do
+			if not Closed[K] then
+				Open[K] = true
+				Count = Count+1
+			end
 		end
 	end
-
-	if next(Open) and TestConnection(Target, Open, Closed, Count) then return true end
 
 	return false, Closed, Count
 end
 
-local function OnConnect(A, B)
+local function OnConnect(A, B, IsParent)
 	local Ac = A.CFramework and A.CFramework.Contraption or nil
 	local Bc = B.CFramework and B.CFramework.Contraption or nil
 
 	if Ac and Bc then
+		if IsParent then -- 'A' just became non-physical
+			A.CFramework.IsPhysical = nil
+			hook.Run("OnPhysicalChange", A)
+		end
+
 		if Ac ~= Bc then Merge(Ac, Bc) end -- Connecting two existing contraptions, return the resulting contraption
 		-- Otherwise they're the same contraption, do nothing
 	elseif Ac then
+		if IsParent then -- 'A' just became non-physical
+			A.CFramework.IsPhysical = nil
+			hook.Run("OnPhysicalChange", A)
+		else
+			A.CFramework.IsPhysical = true
+		end
+
 		Append(Ac, B) -- Only contraption Ac exists, add entity B to it
 	elseif Bc then
+		-- If IsParent, this is NOT a physical change, it's just an 'OnParent'/regular connection
+		if not IsParent then A.CFramework.IsPhysical = true end
+
 		Append(Bc, A) -- Only contraption Bc exists, add entity A to it
 	else
 		-- Neither entity has a contraption, make a new one and add them to it
+		-- If IsParent, this is NOT a physical change, it's just an 'OnParent'/regular connection
 		local Contraption = CreateContraption()
 
 		Append(Contraption, A)
 		Append(Contraption, B)
+
+		if not IsParent then
+			A.CFramework.IsPhysical = true
+			B.CFramework.IsPhysical = true
+		end
 	end
 
 	local AConnect = A.CFramework.Connections
@@ -153,11 +185,19 @@ local function OnConnect(A, B)
 				   else BConnect[A] = 1 end
 end
 
-local function OnDisconnect(A, B)
-	-- Proving if A is still connected to the same contraption as B
-	local AConnections = A.CFramework.Connections
-	local BConnections = B.CFramework.Connections
-	local Contraption  = A.CFramework.Contraption
+local function OnDisconnect(A, B, IsParent)
+	-- Prove whether A is still connected to B or not
+	-- If not: A new contraption is created (Assuming A and B are both connected to more than one thing)
+	local AFrame = A.CFramework
+	local BFrame = B.CFramework
+	local AConnections = AFrame.Connections
+	local BConnections = BFrame.Connections
+	local Contraption  = AFrame.Contraption
+
+	if IsParent then -- Entity just became physical since an ent can only have one parent
+		AFrame.IsPhysical = true
+		hook.Run("OnPhysicalChange", A, true)
+	end 
 
 	if AConnections[B] > 1 then 
 		local Num = AConnections[B]-1
@@ -180,25 +220,37 @@ local function OnDisconnect(A, B)
 				Pop(Contraption, B)
 				SS = true
 			end
-		if SS then return end
+		if SS then return end -- One or both of the ents had nothing connected
+
+
+		-- Parented entities with no physical constraint always have only one connection to the contraption
+		-- If the thing removed was a parent and A is not physical then the two ents are definitely not connected
+		if IsParent and not AFrame.IsPhysical then
+			local Collection = FF(A) -- The child probably has less entities connected
+			local To         = CreateContraption()
+			local From       = Contraption
+
+			for Ent in pairs(Collection) do -- Move all the ents connected to the Child to the new contraption
+				Pop(From, Ent)
+				Append(To, Ent)
+			end
+
+			return -- Short circuit
+		end
 	end
 
-	local Source, Sink
-	if #AConnections <= #BConnections then Source, Sink = A, B
-	else Source, Sink = B, A end
-
-	print("FLOOD FILLING")
+	
+	-- Final test to prove the two entities are no longer connected
 	-- Flood filling until we find the other entity
 	-- If the other entity is not found, the entities collected during the flood fill are made into a new contraption
-	local Connected, Collection, Count = TestConnection(Sink, table.Copy(Source.CFramework.Connections), {[Source] = true}, 0)
+	
+	local Connected, Collection, Count = BFS(A, B)
+
 	if not Connected then -- The two entities are no longer connected and we have created two separate contraptions
 		local To   = CreateContraption()
 		local From = Contraption
 
-		if From.Count-Count < Count then
-			print("Flood Fill Again", Count, From.Count-Count)
-			Collection = FloodFill(Sink, {})
-		end
+		if From.Count - Count < Count then Collection = FF(B, {}) end -- If this side of the split contraption has more entities use the other side instead
 		
 		for Ent in pairs(Collection) do
 			Pop(From, Ent)
@@ -228,15 +280,15 @@ hook.Add("EntityRemoved", "CFramework Removed", function(Constraint)
 	if ConstraintTypes[Constraint:GetClass()] then
 		local A, B = Constraint.Ent1, Constraint.Ent2
 
-		if not IsValid(A) or not IsValid(B) then return end -- Probably a KeepUpright or something weird, which we don't care about
-		if A == B then return end -- We also don't care about constraints attaching an entity to itself
+		if not IsValid(A) or not IsValid(B) then return end -- This shouldn't ever run, but just in case
+		if A == B then return end -- We don't care about constraints attaching an entity to itself
 
 		OnDisconnect(A, B)
 		hook.Run("OnConstraintRemoved", Constraint)
 	end
 end)
 
-hook.Add("Initialize", "CFramework Init", function()
+hook.Add("Initialize", "CFramework Init", function() -- We only want to hijack the SetParent function once
 	local Meta = FindMetaTable("Entity")
 
 	Meta.LegacyParent = Meta.SetParent
@@ -244,18 +296,18 @@ hook.Add("Initialize", "CFramework Init", function()
 	function Meta:SetParent(Parent, Attachment)
 		local OldParent = self:GetParent()
 
-		if IsValid(OldParent) and not Filter[OldParent:GetClass()] and not Filter[self:GetClass()] then
-			OnDisconnect(self, OldParent)
+		if IsValid(OldParent) and not Filter[OldParent:GetClass()] and not Filter[self:GetClass()] then -- It's only an 'Unparent' if there was a previous parent
+			OnDisconnect(self, OldParent, true)
 			hook.Run("OnUnparent", self, OldParent)
 		end
 		
 		self:LegacyParent(Parent, Attachment)
 
 		if IsValid(Parent) and not Filter[Parent:GetClass()] and not Filter[self:GetClass()] then
-			OnConnect(self, Parent)
+			OnConnect(self, Parent, true)
 			hook.Run("OnParent", self, Parent)
 		end
 	end
 
-	hook.Remove("Initialize", "CFramework Init")
+	hook.Remove("Initialize", "CFramework Init") -- No reason to keep this in memory
 end)

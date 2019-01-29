@@ -3,4 +3,4 @@ local function OnDisconnect(Contraption, Entity) print("OnDisconnect", Contrapti
 local function OnCreate(Contraption) print("OnCreate", Contraption) end
 local function OnDestroy(Contraption) print("OnDestroy", Contraption) end
 
-contraption.AddModule("debug", OnConnect, OnDisconnect, OnCreate, OnDestroy)
+--contraption.AddModule("debug", OnConnect, OnDisconnect, OnCreate, OnDestroy)
