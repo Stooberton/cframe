@@ -45,12 +45,11 @@ local function CreateContraption()
 	return Contraption
 end
 
+local function Initialize(Entity) Entity.CFramework = { Connections = {} } end
+
 local function Pop(Contraption, Entity)
 	Contraption.Entities[Entity] = nil
 	Contraption.Count = Contraption.Count-1
-
-	Entity.CFramework.Contraption = nil
-	if not Entity.CFramework.Connections then Entity.CFramework = nil end
 
 	for _, V in pairs(Modules.Disconnect) do V(Contraption, Entity) end
 
@@ -60,19 +59,16 @@ local function Pop(Contraption, Entity)
 
 		for _, V in pairs(Modules.Destroy) do V(Contraption) end
 	end
+
+	Entity.CFramework.Contraption = nil
+	if not next(Entity.CFramework.Connections) then Entity.CFramework = nil end
 end
 
 local function Append(Contraption, Entity)
 	Contraption.Entities[Entity] = true
 	Contraption.Count = Contraption.Count+1
 
-	if Entity.CFramework then Entity.CFramework.Contraption = Contraption
-	else
-		Entity.CFramework = {
-			Contraption = Contraption,
-			Connections = {}
-		}
-	end
+	Entity.CFramework.Contraption = Contraption
 
 	for _, V in pairs(Modules.Connect) do V(Contraption, Entity) end
 end
@@ -111,7 +107,7 @@ end
 
 local function BFS(Start, Goal)
 	local Closed = {}
-	local Open   = {};	for K in pairs(Start.CF.Connections) do Open[K] = true end -- Quick copy
+	local Open   = {};	for K in pairs(Start.CFramework.Connections) do Open[K] = true end -- Quick copy
 	local Count  = #Open
 
 	while next(Open) do
@@ -148,6 +144,10 @@ local function OnConnect(A, B, IsParent)
 		if Ac ~= Bc then Merge(Ac, Bc) end -- Connecting two existing contraptions, return the resulting contraption
 		-- Otherwise they're the same contraption, do nothing
 	elseif Ac then
+		Initialize(B)
+		
+		B.CFramework.IsPhysical = true -- B does not have a contraption, it will always be physical at this point
+
 		if IsParent then -- 'A' just became non-physical
 			A.CFramework.IsPhysical = nil
 			hook.Run("OnPhysicalChange", A)
@@ -156,23 +156,25 @@ local function OnConnect(A, B, IsParent)
 		end
 
 		Append(Ac, B) -- Only contraption Ac exists, add entity B to it
-	elseif Bc then
+	elseif Bc
+		Initialize(A)
+
 		-- If IsParent, this is NOT a physical change, it's just an 'OnParent'/regular connection
 		if not IsParent then A.CFramework.IsPhysical = true end
 
 		Append(Bc, A) -- Only contraption Bc exists, add entity A to it
 	else
+		Initialize(A)
+		Initialize(B)
+
 		-- Neither entity has a contraption, make a new one and add them to it
 		-- If IsParent, this is NOT a physical change, it's just an 'OnParent'/regular connection
-		local Contraption = CreateContraption()
+		if not IsParent then A.CFramework.IsPhysical = true end
+		B.CFramework.IsPhysical = true
 
+		local Contraption = CreateContraption()
 		Append(Contraption, A)
 		Append(Contraption, B)
-
-		if not IsParent then
-			A.CFramework.IsPhysical = true
-			B.CFramework.IsPhysical = true
-		end
 	end
 
 	local AConnect = A.CFramework.Connections
@@ -220,7 +222,7 @@ local function OnDisconnect(A, B, IsParent)
 				Pop(Contraption, B)
 				SS = true
 			end
-		if SS then return end -- One or both of the ents had nothing connected
+		if SS then return end -- One or both of the ents has nothing connected
 
 
 		-- Parented entities with no physical constraint always have only one connection to the contraption

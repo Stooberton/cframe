@@ -1,6 +1,10 @@
 local function OnConnect(Contraption, Entity) -- Add mass to contraption
+	local Phys = Entity:GetPhysicsObject()
+
+	if not IsValid(Phys) then return end
+
 	local Mass  = Contraption.Mass
-	local Delta = IsValid(Entity:GetPhysicsObject()) and Entity:GetPhysicsObject():GetMass() or 0
+	local Delta = Phys:GetMass()
 
 	Mass.Total = Mass.Total + Delta
 
@@ -9,8 +13,12 @@ local function OnConnect(Contraption, Entity) -- Add mass to contraption
 end
 
 local function OnDisconnect(Contraption, Entity) -- Subtract mass from contraption
+	local Phys = Entity:GetPhysicsObject()
+
+	if not IsValid(Phys) then return end
+
 	local Mass  = Contraption.Mass
-	local Delta = IsValid(Entity:GetPhysicsObject()) and Entity:GetPhysicsObject():GetMass() or 0
+	local Delta = Phys:GetMass()
 
 	Mass.Total = Mass.Total - Delta
 
@@ -57,13 +65,17 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 end)
 
 hook.Add("OnPhysicalChange", "CFrame Mass Module", function(Entity, IsPhysical)
-	local Mass  = self:GetEntity().CFramework.Contraption.Mass
-	local Delta = self:GetMass()
+	local Phys = Entity:GetPhysicsObject()
+
+	if not IsValid(Phys) then return end
+
+	local Mass  = Entity.CFramework.Contraption.Mass
+	local Delta = Phys:GetMass()
 
 	if IsPhysical then
 		Mass.Physical = Mass.Physical + Delta
 		Mass.Parented = Mass.Parented - Delta
-	else
+	else print("Physicality Sub Physical, Add Parented", Delta)
 		Mass.Physical = Mass.Physical - Delta
 		Mass.Parented = Mass.Parented + Delta
 	end
