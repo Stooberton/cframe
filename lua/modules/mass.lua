@@ -1,4 +1,4 @@
-local function OnConnect(Contraption, Entity) -- Add mass to contraption
+local function OnConnect(Contraption, Entity, Parent) -- Add mass to contraption
 	local Phys = Entity:GetPhysicsObject()
 
 	if not IsValid(Phys) then return end
@@ -8,11 +8,11 @@ local function OnConnect(Contraption, Entity) -- Add mass to contraption
 
 	Mass.Total = Mass.Total + Delta
 
-	if Entity.CFramework.IsPhysical then Mass.Physical = Mass.Physical + Delta
-									else Mass.Parented = Mass.Parented + Delta end
+	if Parent then Mass.Parented = Mass.Parented + Delta
+			  else Mass.Physical = Mass.Physical + Delta end
 end
 
-local function OnDisconnect(Contraption, Entity) -- Subtract mass from contraption
+local function OnDisconnect(Contraption, Entity, Parent) -- Subtract mass from contraption
 	local Phys = Entity:GetPhysicsObject()
 
 	if not IsValid(Phys) then return end
@@ -22,8 +22,8 @@ local function OnDisconnect(Contraption, Entity) -- Subtract mass from contrapti
 
 	Mass.Total = Mass.Total - Delta
 
-	if Entity.CFramework.IsPhysical then Mass.Physical = Mass.Physical - Delta
-									else Mass.Parented = Mass.Parented - Delta end
+	if Parent then Mass.Parented = Mass.Parented - Delta
+			  else Mass.Physical = Mass.Physical - Delta end
 end
 
 local function OnCreate(Contraption) -- Initialize the Mass table
@@ -52,12 +52,13 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 			
 			local NewTotal = Mass.Total + Delta
 
-			if NewTotal <= 0 then return end -- Sanity checking because spawning dupes does some freaky shit
+			if NewTotal > 0 then -- Sanity checking because spawning dupes does some freaky shit
 
-			Mass.Total = NewTotal
+				Mass.Total = NewTotal
 
-			if CF.IsPhysical then Mass.Physical = Mass.Physical + Delta
-							 else Mass.Parented = Mass.Parented + Delta end
+				if CF.IsPhysical then Mass.Physical = Mass.Physical + Delta
+								 else Mass.Parented = Mass.Parented + Delta end
+			end
 		end
 
 		self:LegacyMass(NewMass)
@@ -75,7 +76,7 @@ hook.Add("OnPhysicalChange", "CFrame Mass Module", function(Entity, IsPhysical)
 	if IsPhysical then
 		Mass.Physical = Mass.Physical + Delta
 		Mass.Parented = Mass.Parented - Delta
-	else print("Physicality Sub Physical, Add Parented", Delta)
+	else
 		Mass.Physical = Mass.Physical - Delta
 		Mass.Parented = Mass.Parented + Delta
 	end
