@@ -35,7 +35,7 @@ local function CreateContraption()
 
 	local Contraption = {
 		IsContraption = true,
-		Entities = {
+		Ents = {
 			Count = 0,
 			Physical = {},
 			Parented = {}
@@ -67,24 +67,24 @@ local function Initialize(Entity, Parent)
 end
 
 local function Pop(Contraption, Entity, Parent)
-	if Parent then Contraption.Entities.Parented[Entity] = nil
-	else Contraption.Entities.Physical[Entity] = nil end
+	if Parent then Contraption.Ents.Parented[Entity] = nil
+			  else Contraption.Ents.Physical[Entity] = nil end
 
-	Contraption.Entities.Count = Contraption.Entities.Count-1
+	Contraption.Ents.Count = Contraption.Ents.Count-1
 
 	for _, V in pairs(Modules.Disconnect) do V(Contraption, Entity, Parent) end
 
-	if Contraption.Entities.Count == 0 then DestroyContraption(Contraption) end
+	if Contraption.Ents.Count == 0 then DestroyContraption(Contraption) end
 
 	Entity.CFramework.Contraption = nil
 	if not next(Entity.CFramework.Connections) then Entity.CFramework = nil end
 end
 
 local function Append(Contraption, Entity, Parent)
-	if Parent then Contraption.Entities.Parented[Entity] = true
-	else Contraption.Entities.Physical[Entity] = true end
+	if Parent then Contraption.Ents.Parented[Entity] = true
+			  else Contraption.Ents.Physical[Entity] = true end
 
-	Contraption.Entities.Count = Contraption.Entities.Count+1
+	Contraption.Ents.Count = Contraption.Ents.Count+1
 
 	Entity.CFramework.Contraption = Contraption
 
@@ -93,17 +93,20 @@ end
 
 local function Merge(A, B)
 	local Big, Small
-		if A.Entities.Count >= B.Entities.Count then Big, Small = A, B
-		else Big, Small = B, A end
+	
+	if A.Ents.Count >= B.Ents.Count then Big, Small = A, B
+									else Big, Small = B, A end
 
-	for Ent in pairs(Small.Entities.Physical) do
+	for Ent in pairs(Small.Ents.Physical) do
 		Pop(Small, Ent)
 		Append(Big, Ent)
 	end
-	
-	for Ent in pairs(Small.Entities.Parented) do
-		Pop(Small, Ent, true)
-		Append(Big, Ent, true)
+
+	if Contraptions[Small] then -- Entity may have consisted of only physical entities, check if it still exists
+		for Ent in pairs(Small.Ents.Parented) do
+			Pop(Small, Ent, true)
+			Append(Big, Ent, true)
+		end
 	end
 
 	return Big
@@ -152,7 +155,7 @@ end
 local function SetParented(Entity, Parent)
 	Entity.CFramework.IsPhysical = Parent and nil or true
 
-	local Ents = Entity.CFramework.Contraption.Entities
+	local Ents = Entity.CFramework.Contraption.Ents
 
 	if Parent then
 		Ents.Parented[Entity] = true
@@ -217,8 +220,8 @@ local function OnDisconnect(A, B, IsParent)
 		AConnections[B] = Num
 		BConnections[A] = Num
 
-		return -- These two entities are still connected, no need for further checking
-	else -- These two entities are no longer connected directly
+		return -- These two Ents are still connected, no need for further checking
+	else -- These two Ents are no longer connected directly
 		AConnections[B] = nil
 		BConnections[A] = nil
 
@@ -235,10 +238,10 @@ local function OnDisconnect(A, B, IsParent)
 		if SS then return end -- One or both of the ents has nothing connected
 
 
-		-- Parented entities with no physical constraint always have only one connection to the contraption
+		-- Parented Ents with no physical constraint always have only one connection to the contraption
 		-- If the thing removed was a parent and A is not physical then the two ents are definitely not connected
 		if IsParent and not AFrame.IsPhysical then
-			local Collection = FF(A) -- The child probably has less entities connected
+			local Collection = FF(A) -- The child probably has less Ents connected
 			local To         = CreateContraption()
 			local From       = Contraption
 
@@ -252,17 +255,17 @@ local function OnDisconnect(A, B, IsParent)
 	end
 
 	
-	-- Final test to prove the two entities are no longer connected
+	-- Final test to prove the two Ents are no longer connected
 	-- Flood filling until we find the other entity
-	-- If the other entity is not found, the entities collected during the flood fill are made into a new contraption
+	-- If the other entity is not found, the Ents collected during the flood fill are made into a new contraption
 	
 	local Connected, Collection, Count = BFS(A, B)
 
-	if not Connected then -- The two entities are no longer connected and we have created two separate contraptions
+	if not Connected then -- The two Ents are no longer connected and we have created two separate contraptions
 		local To   = CreateContraption()
 		local From = Contraption
 
-		if From.Entities.Count - Count < Count then Collection = FF(B, {}) end -- If this side of the split contraption has more entities use the other side instead
+		if From.Ents.Count - Count < Count then Collection = FF(B, {}) end -- If this side of the split contraption has more Ents use the other side instead
 		
 		for Ent in pairs(Collection) do
 			Pop(From, Ent)
@@ -279,7 +282,7 @@ hook.Add("OnEntityCreated", "CFramework Created", function(Constraint)
 			
 			local A, B = Constraint.Ent1, Constraint.Ent2
 
-			if not IsValid(A) or not IsValid(B) then return end -- Contraptions consist of multiple entities not one
+			if not IsValid(A) or not IsValid(B) then return end -- Contraptions consist of multiple Ents not one
 			if A == B then return end -- We also don't care about constraints attaching an entity to itself, see above
 
 			OnConnect(A, B)
