@@ -8,7 +8,8 @@ contraption = contraption or {Modules = {
 local Modules = contraption.Modules
 
 -- Adds or modifies a module to contraption framework
-function contraption.AddModule(Name, Connect, Disconnect, Create, Destroy)
+function contraption.AddModule(Name, Init, Connect, Disconnect, Create, Destroy)
+	Modules.Initialize[Name] = Init
 	Modules.Connect[Name]    = Connect
 	Modules.Disconnect[Name] = Disconnect
 	Modules.Create[Name]     = Create
@@ -17,6 +18,7 @@ end
 
 -- Removes/disables a module
 function contraption.RemoveModule(Name)
+	Modules.Initialize[Name] = nil
 	Modules.Connect[Name]    = nil
 	Modules.Disconnect[Name] = nil
 	Modules.Create[Name]     = nil
@@ -25,6 +27,7 @@ end
 
 -- Check if a module exists
 function contraption.Module(Name)
+	if Modules.Initialize[Name] then return true end
 	if Modules.Connect[Name] then return true end
 	if Modules.Disconnect[Name] then return true end
 	if Modules.Create[Name] then return true end

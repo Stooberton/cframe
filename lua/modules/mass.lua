@@ -34,7 +34,7 @@ local function OnCreate(Contraption) -- Initialize the Mass table
 	}
 end
 
-contraption.AddModule("mass", OnConnect, OnDisconnect, OnCreate, nil)
+contraption.AddModule("mass", nil, OnConnect, OnDisconnect, OnCreate, nil)
 
 
 ------------------------------------
@@ -81,3 +81,37 @@ hook.Add("OnPhysicalChange", "CFrame Mass Module", function(Entity, IsPhysical)
 		Mass.Parented = Mass.Parented + Delta
 	end
 end)
+
+------------------------------------
+------------------- Helper functions
+------------------------------------
+
+function contraption.GetMass(Var)
+	if Var.IsContraption then -- Is a contraption table
+		return Var.Mass.Total
+	elseif Var.CFramework then -- Is an entity
+		return Var.CFramework.Contraption.Mass.Total
+	else -- Isn't a contraption or entity attached to one
+		return 0
+	end
+end
+
+function contraption.GetPhysMass(Var)
+	if Var.IsContraption then
+		return Var.Mass.Physical
+	elseif Var.CFramework then
+		return Var.CFramework.Contraption.Mass.Physical
+	else
+		return 0
+	end
+end
+
+function contraption.GetParentMass(Var)
+	if Var.IsContraption then
+		return Var.Mass.Parented
+	elseif Var.CFramework then
+		return Var.CFramework.Contraption.Mass.Parented
+	else
+		return 0
+	end
+end

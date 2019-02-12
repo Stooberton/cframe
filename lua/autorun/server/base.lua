@@ -17,7 +17,8 @@ contraption = contraption or {}
 		Connect = {},
 		Disconnect = {},
 		Create = {},
-		Destroy = {}
+		Destroy = {},
+		Initialize = {}
 	}
 
 -------------------------------------------------- Localization
@@ -61,6 +62,8 @@ local function Initialize(Entity, Parent)
 		Connections = {},
 		IsPhysical = Parent and nil or true
 	}
+
+	for _, V in pairs(Modules.Initialize) do V(Entity, Parent) end
 end
 
 local function Pop(Contraption, Entity, Parent)
@@ -120,7 +123,7 @@ local function FF(Entity, Filter) -- Depth first
 	return Filter
 end
 
-local function BFS(Start, Goal)
+local function BFS(Start, Goal) -- Breadth first
 	local Closed = {}
 	local Open   = {};	for K in pairs(Start.CFramework.Connections) do Open[K] = true end -- Quick copy
 	local Count  = #Open
@@ -183,8 +186,8 @@ local function OnConnect(A, B, IsParent)
 		-- Neither entity has a contraption, make a new one and add them to it
 		local Contraption = CreateContraption()
 
-		Initialize(A, IsParent) -- If IsParent, this is NOT a physical change, it's just an 'OnParent'/regular connection
 		Initialize(B)
+		Initialize(A, IsParent) -- If IsParent, this is NOT a physical change, it's just an 'OnParent'/regular connection
 
 		Append(Contraption, A, IsParent)
 		Append(Contraption, B)
