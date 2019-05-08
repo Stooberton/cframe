@@ -214,51 +214,53 @@ local function OnDisconnect(A, B, IsParent)
 
 	if IsParent then SetParented(A, nil) end -- Entity just became physical since an ent can only have one parent
 
-	if AConnections[B] > 1 then 
+	-- Check if the two entities are directly connected
+	if AConnections[B] > 1 then
 		local Num = AConnections[B]-1
 
 		AConnections[B] = Num
 		BConnections[A] = Num
 
 		return -- These two Ents are still connected, no need for further checking
-	else -- These two Ents are no longer connected directly
-		AConnections[B] = nil
-		BConnections[A] = nil
-
-		local SS
-			if not next(AConnections) then
-				Pop(Contraption, A)
-				SS = true
-			end
-
-			if not next(BConnections) then
-				Pop(Contraption, B)
-				SS = true
-			end
-		if SS then return end -- One or both of the ents has nothing connected
-
-
-		-- Parented Ents with no physical constraint always have only one connection to the contraption
-		-- If the thing removed was a parent and A is not physical then the two ents are definitely not connected
-		if IsParent and not AFrame.IsPhysical then
-			local Collection = FF(A) -- The child probably has less Ents connected
-			local To         = CreateContraption()
-			local From       = Contraption
-
-			for Ent in pairs(Collection) do -- Move all the ents connected to the Child to the new contraption
-				Pop(From, Ent)
-				Append(To, Ent)
-			end
-
-			return -- Short circuit
-		end
 	end
 
-	
+
+	AConnections[B] = nil
+	BConnections[A] = nil
+
+	-- Check if the two entities are connected to anything at all
+	local SC
+		if not next(AConnections) then
+			Pop(Contraption, A)
+			SC = true
+		end
+
+		if not next(BConnections) then
+			Pop(Contraption, B)
+			SC = true
+		end
+	if SC then return end -- One or both of the ents has nothing connected, no further checking needed
+
+
+	-- Handle parents with children
+	-- Parented Ents with no physical constraint always have only one connection to the contraption
+	-- If the thing removed was a parent and A is not physical then the two ents are definitely not connected
+	if IsParent and not AFrame.IsPhysical then
+		local Collection = FF(A) -- The child probably has less Ents connected
+		local To         = CreateContraption()
+		local From       = Contraption
+
+		for Ent in pairs(Collection) do -- Move all the ents connected to the Child to the new contraption
+			Pop(From, Ent)
+			Append(To, Ent)
+		end
+
+		return -- Short circuit
+	end
+
 	-- Final test to prove the two Ents are no longer connected
 	-- Flood filling until we find the other entity
 	-- If the other entity is not found, the Ents collected during the flood fill are made into a new contraption
-	
 	local Connected, Collection, Count = BFS(A, B)
 
 	if not Connected then -- The two Ents are no longer connected and we have created two separate contraptions
@@ -277,9 +279,12 @@ end
 hook.Add("OnEntityCreated", "CFramework Created", function(Constraint)
 	if ConstraintTypes[Constraint:GetClass()] then
 		-- We must wait because the Constraint's information is set after the constraint is created
-		timer.Simple(0, function()
+		-- Setting information when it's created will be removed by SetTable called on the constraint immediately after it's made
+		timer.Simple(0, function() print("Timer")
 			if not IsValid(Constraint) then return end
 			
+			Constraint.Initialized = true -- Required check on EntityRemoved to handle constraints created and deleted in the same tick
+
 			local A, B = Constraint.Ent1, Constraint.Ent2
 
 			if not IsValid(A) or not IsValid(B) then return end -- Contraptions consist of multiple Ents not one
@@ -292,7 +297,7 @@ hook.Add("OnEntityCreated", "CFramework Created", function(Constraint)
 end)
 
 hook.Add("EntityRemoved", "CFramework Removed", function(Constraint)
-	if ConstraintTypes[Constraint:GetClass()] then
+	if Constraint.Initialized then
 		local A, B = Constraint.Ent1, Constraint.Ent2
 
 		if not IsValid(A) or not IsValid(B) then return end -- This shouldn't ever run, but just in case
