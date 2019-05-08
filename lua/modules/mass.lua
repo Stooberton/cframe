@@ -49,7 +49,7 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 			local CF    = self:GetEntity().CFramework
 			local Mass  = CF.Contraption.Mass
 			local Delta = NewMass - self:GetMass()
-			
+
 			local NewTotal = Mass.Total + Delta
 
 			if NewTotal > 0 then -- Sanity checking because spawning dupes does some freaky shit

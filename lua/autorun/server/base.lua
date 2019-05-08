@@ -93,7 +93,7 @@ end
 
 local function Merge(A, B)
 	local Big, Small
-	
+
 	if A.Ents.Count >= B.Ents.Count then Big, Small = A, B
 									else Big, Small = B, A end
 
@@ -140,7 +140,7 @@ local function BFS(Start, Goal) -- Breadth first
 		if Node == Goal then return true end
 
 		Closed[Node] = true
-		
+
 		for K in pairs(Node.CFramework.Connections) do
 			if not Closed[K] then
 				Open[K] = true
@@ -178,7 +178,7 @@ local function OnConnect(A, B, IsParent)
 		if Ac ~= Bc then Merge(Ac, Bc) end -- Connecting two existing contraptions, return the resulting contraption
 		-- Otherwise they're the same contraption, do nothing
 	elseif Ac then
-		if IsParent then SetParented(A, true) end-- 'A' just became non-physical 
+		if IsParent then SetParented(A, true) end-- 'A' just became non-physical
 
 		Initialize(B)
 		Append(Ac, B) -- Only contraption Ac exists, add entity B to it
@@ -198,7 +198,7 @@ local function OnConnect(A, B, IsParent)
 
 	local AConnect = A.CFramework.Connections
 	local BConnect = B.CFramework.Connections
-	
+
 	AConnect[B] = (AConnect[B] or 0)+1
 	BConnect[A] = (BConnect[A] or 0)+1
 end
@@ -268,7 +268,7 @@ local function OnDisconnect(A, B, IsParent)
 		local From = Contraption
 
 		if From.Ents.Count - Count < Count then Collection = FF(B, {}) end -- If this side of the split contraption has more Ents use the other side instead
-		
+
 		for Ent in pairs(Collection) do
 			Pop(From, Ent)
 			Append(To, Ent)
@@ -282,7 +282,7 @@ hook.Add("OnEntityCreated", "CFramework Created", function(Constraint)
 		-- Setting information when it's created will be removed by SetTable called on the constraint immediately after it's made
 		timer.Simple(0, function() print("Timer")
 			if not IsValid(Constraint) then return end
-			
+
 			Constraint.Initialized = true -- Required check on EntityRemoved to handle constraints created and deleted in the same tick
 
 			local A, B = Constraint.Ent1, Constraint.Ent2
@@ -320,7 +320,7 @@ hook.Add("Initialize", "CFramework Init", function() -- We only want to hijack t
 			OnDisconnect(self, OldParent, true)
 			hook.Run("OnUnparent", self, OldParent)
 		end
-		
+
 		self:LegacyParent(Parent, Attachment)
 
 		if IsValid(Parent) and not Filter[Parent:GetClass()] and not Filter[self:GetClass()] then
