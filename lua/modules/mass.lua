@@ -106,7 +106,7 @@ function contraption.GetPhysMass(Var)
 	end
 end
 
-function contraption.GetParentMass(Var)
+function contraption.GetParentedMass(Var)
 	if Var.IsContraption then
 		return Var.Mass.Parented
 	elseif Var.CFramework then
