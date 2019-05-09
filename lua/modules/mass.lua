@@ -45,8 +45,8 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 		Meta.LegacyMass = Meta.SetMass
 
 	function Meta:SetMass(NewMass)
-		if self:GetEntity().CFramework then
-			local CF    = self:GetEntity().CFramework
+		if self:GetEntity().CFrame then
+			local CF    = self:GetEntity().CFrame
 			local Mass  = CF.Contraption.Mass
 			local Delta = NewMass - self:GetMass()
 
@@ -70,7 +70,7 @@ hook.Add("OnPhysicalChange", "CFrame Mass Module", function(Entity, IsPhysical)
 
 	if not IsValid(Phys) then return end
 
-	local Mass  = Entity.CFramework.Contraption.Mass
+	local Mass  = Entity.CFrame.Contraption.Mass
 	local Delta = Phys:GetMass()
 
 	if IsPhysical then
@@ -89,8 +89,8 @@ end)
 function contraption.GetMass(Var)
 	if Var.IsContraption then -- Is a contraption table
 		return Var.Mass.Total
-	elseif Var.CFramework then -- Is an entity
-		return Var.CFramework.Contraption.Mass.Total
+	elseif Var.CFrame then -- Is an entity
+		return Var.CFrame.Contraption.Mass.Total
 	else -- Isn't a contraption or entity attached to one
 		return 0
 	end
@@ -99,8 +99,8 @@ end
 function contraption.GetPhysMass(Var)
 	if Var.IsContraption then
 		return Var.Mass.Physical
-	elseif Var.CFramework then
-		return Var.CFramework.Contraption.Mass.Physical
+	elseif Var.CFrame then
+		return Var.CFrame.Contraption.Mass.Physical
 	else
 		return 0
 	end
@@ -109,8 +109,8 @@ end
 function contraption.GetParentedMass(Var)
 	if Var.IsContraption then
 		return Var.Mass.Parented
-	elseif Var.CFramework then
-		return Var.CFramework.Contraption.Mass.Parented
+	elseif Var.CFrame then
+		return Var.CFrame.Contraption.Mass.Parented
 	else
 		return 0
 	end

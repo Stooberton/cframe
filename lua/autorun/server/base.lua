@@ -39,14 +39,14 @@ do
 	end
 
 	function contraption.ConstraintTypes() -- Return a table of the constraint types cframe is monitoring
-		local Tab = {}; for K in pairs(contraption.ConstraintTypes) do Tab[K] = true
+		local Tab = {}; for K in pairs(contraption.ConstraintTypes) do Tab[K] = true end
 		return Tab
 	end
 
 	function contraption.AddConstraint(Name) -- Add a constraint to be monitored by cframe
 		ConstraintTypes[Name] = true
 	end
-	
+
 	function contraption.RemoveConstraint(Name)
 		ConstraintTypes[Name] = nil
 	end
