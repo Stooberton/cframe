@@ -1,9 +1,8 @@
 E2Lib.RegisterExtension("contraption", true, "Enables interaction with Contraption Framework")
 
 local Contraptions
-	timer.Simple(0, function()
-		Contraptions = contraption.Contraptions
-	end)
+
+hook.Add("CFrame Initialize", "E2", function() Contraptions = contraption.Contraptions end) -- Race conditions are bad mkay
 
 --=====================================================================================--
 registerType("contraption", "xcr", nil,
@@ -108,7 +107,7 @@ e2function array contraption:physicalEntities()
 		Arr[Count] = K
 	end
 
-	return Arr	
+	return Arr
 end
 
 -- Return an array of all parented entities in a contraption
@@ -125,7 +124,7 @@ e2function array contraption:parentedEntities()
 		Arr[Count] = K
 	end
 
-	return Arr	
+	return Arr
 end
 
 -- Return the number of entities that make up this contraption
@@ -136,7 +135,7 @@ e2function number contraption:count()
 end
 
 e2function number contraption:getMass()
-	if not Contraptions[this] then return 0 end 
+	if not Contraptions[this] then return 0 end
 
 	return contraption.GetMass(this)
 end

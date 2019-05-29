@@ -394,3 +394,6 @@ for K, V in pairs(file.Find("modules/*", "LUA")) do
 		AddCSLuaFile("modules/" .. V)
 	end
 end
+
+-------------------------------------------------- Run Initialize hook
+hook.Run("CFrame Initialize")
