@@ -1,12 +1,6 @@
 E2Lib.RegisterExtension("contraption", true, "Enables interaction with Contraption Framework")
 
-local Contraptions
-
-hook.Add("Initialize", "CFrame E2", function()
-	Contraptions = cframe.Contraptions
-
-	hook.Remove("Initialize", "CFrame E2")
-end)
+local Contraptions = cframe.Contraptions
 
 --=====================================================================================--
 registerType("contraption", "xcr", nil,
@@ -50,7 +44,7 @@ end
 e2function contraption entity:contraption()
 	if not IsValid(this) then return nil end
 
-	if this.CFrame then
+	if this.CFWRK then
 		return this.CFWRK.Contraption
 	else
 		return nil
@@ -59,7 +53,7 @@ end
 
 -- Return the E2s own contraption
 e2function contraption contraption()
-	if self.CFrame then
+	if self.CFWRK then
 		return self.CFWRK.Contraption
 	else
 		return nil
