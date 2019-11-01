@@ -63,6 +63,8 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 
 		self:LegacyMass(NewMass)
 	end
+
+	hook.Remove("Initialize", "CFrame Mass Module")
 end)
 
 hook.Add("OnPhysicalChange", "CFrame Mass Module", function(Entity, IsPhysical)
