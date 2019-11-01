@@ -3,7 +3,7 @@ E2Lib.RegisterExtension("contraption", true, "Enables interaction with Contrapti
 local Contraptions
 
 hook.Add("Initialize", "CFrame E2", function()
-	Contraptions = contraption.Contraptions
+	Contraptions = cframe.Contraptions
 
 	hook.Remove("Initialize", "CFrame E2")
 end)
@@ -51,7 +51,7 @@ e2function contraption entity:contraption()
 	if not IsValid(this) then return nil end
 
 	if this.CFrame then
-		return this.CFrame.Contraption
+		return this.CFWRK.Contraption
 	else
 		return nil
 	end
@@ -60,7 +60,7 @@ end
 -- Return the E2s own contraption
 e2function contraption contraption()
 	if self.CFrame then
-		return self.CFrame.Contraption
+		return self.CFWRK.Contraption
 	else
 		return nil
 	end
@@ -141,17 +141,17 @@ end
 e2function number contraption:getMass()
 	if not Contraptions[this] then return 0 end
 
-	return contraption.GetMass(this)
+	return cframe.GetMass(this)
 end
 
 e2function number contraption:getPhysicalMass()
 	if not Contraptions[this] then return 0 end
 
-	return contraption.GetPhysMass(this)
+	return cframe.GetPhysMass(this)
 end
 
 e2function number contraption:getParentedMass()
 	if not Contraptions[this] then return 0 end
 
-	return contraption.GetParentedMass(this)
+	return cframe.GetParentedMass(this)
 end
