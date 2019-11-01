@@ -46,9 +46,9 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 
 	function Meta:SetMass(NewMass)
 		local CF = cframe.Get(self:GetEntity())
-		
+
 		if CF then
-			local Mass  = CF.Contraption.Mass
+			local Mass  = CF.Mass
 			local Delta = NewMass - self:GetMass()
 
 			local NewTotal = Mass.Total + Delta
@@ -69,9 +69,6 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 end)
 
 hook.Add("OnPhysicalChange", "CFrame Mass Module", function(Entity, IsPhysical)
-	print("Hook on physical change")
-	print(IsPhysical and "IsPhysical" or "Not physical")
-
 	local Phys = Entity:GetPhysicsObject()
 
 	if not IsValid(Phys) then return end
@@ -80,11 +77,9 @@ hook.Add("OnPhysicalChange", "CFrame Mass Module", function(Entity, IsPhysical)
 	local Delta = Phys:GetMass()
 
 	if IsPhysical then
-		print("Add phys mass, sub parented)")
 		Mass.Physical = Mass.Physical + Delta
 		Mass.Parented = Mass.Parented - Delta
 	else
-		print("Add parented mass, sub phys")
 		Mass.Physical = Mass.Physical - Delta
 		Mass.Parented = Mass.Parented + Delta
 	end

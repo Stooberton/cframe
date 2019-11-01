@@ -55,7 +55,7 @@ do
 	end
 
 	function cframe.HasConstraints(Entity) -- Returns bool whether an entity has constraints (that cframe monitors)
-		if next(Entity.Constraints) then
+		if Entity.Constraints and next(Entity.Constraints) then
 			for K, V in pairs(Entity.Constraints) do
 				if ConstraintTypes[V:GetClass()] then
 					return true
