@@ -1,31 +1,34 @@
-contraption = contraption or {}
-	contraption.Count = 0
-	contraption.Contraptions = {}
-	contraption.ConstraintTypes = {
-		phys_lengthconstraint = true,
-		phys_constraint = true,
-		phys_hinge = true,
-		phys_ragdollconstraint = true,
-		gmod_winch_controller = true,
-		phys_spring = true,
-		phys_slideconstraint = true,
-		phys_torque = true,
-		phys_pulleyconstraint = true,
-		phys_ballsocket = true
+if not contraption then
+	contraption = {
+		Count = 0,
+		Contraptions = {},
+		ConstraintTypes = {
+			phys_lengthconstraint = true,
+			phys_constraint = true,
+			phys_hinge = true,
+			phys_ragdollconstraint = true,
+			gmod_winch_controller = true,
+			phys_spring = true,
+			phys_slideconstraint = true,
+			phys_torque = true,
+			phys_pulleyconstraint = true,
+			phys_ballsocket = true
+		},
+		Modules = {
+			Connect = {},
+			Disconnect = {},
+			Create = {},
+			Destroy = {},
+			Initialize = {}
+		}
 	}
-	contraption.Modules = contraption.Modules or {
-		Connect = {},
-		Disconnect = {},
-		Create = {},
-		Destroy = {},
-		Initialize = {}
-	}
+end
 
 -------------------------------------------------- Localization
 
 local Contraptions    = contraption.Contraptions
 local Modules         = contraption.Modules
-local Filter          = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger filters
+local ParentFilter	  = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger filters
 local ConstraintTypes = contraption.ConstraintTypes
 
 -------------------------------------------------- Contraption Lib
@@ -38,7 +41,7 @@ do
 		return Entity.CFrame and Entity.CFrame.Contraption or nil
 	end
 
-	function contraption.ConstraintTypes() -- Return a table of the constraint types cframe is monitoring
+	function contraption.GetConstraintTypes() -- Return a table of the constraint types cframe is monitoring
 		local Tab = {}; for K in pairs(contraption.ConstraintTypes) do Tab[K] = true end
 		return Tab
 	end
@@ -168,8 +171,8 @@ local function FF(Entity, Filter) -- Depth first
 
 	Filter[Entity] = true
 
-	for Entity in pairs(Entity.CFrame.Connections) do
-		if IsValid(Entity) and not Filter[Entity] then FF(A, Filter) end
+	for K in pairs(Entity.CFrame.Connections) do
+		if IsValid(K) and not Filter[K] then FF(K, Filter) end
 	end
 
 	return Filter
@@ -295,7 +298,7 @@ local function OnDisconnect(A, B, IsParent)
 	-- Parented Ents with no physical constraint always have only one connection to the contraption
 	-- If the thing removed was a parent and A is not physical then the two ents are definitely not connected
 	if IsParent and not AFrame.IsPhysical then
-		local Collection = FF(A) -- The child probably has less Ents connected
+		local Collection = FF(A, {}) -- The child probably has less Ents connected
 		local To         = CreateContraption()
 		local From       = Contraption
 
@@ -367,14 +370,14 @@ hook.Add("Initialize", "CFrame Init", function() -- We only want to hijack the S
 	function Meta:SetParent(Parent, Attachment)
 		local OldParent = self:GetParent()
 
-		if IsValid(OldParent) and not Filter[OldParent:GetClass()] and not Filter[self:GetClass()] then -- It's only an 'Unparent' if there was a previous parent
+		if IsValid(OldParent) and not ParentFilter[OldParent:GetClass()] and not ParentFilter[self:GetClass()] then -- It's only an 'Unparent' if there was a previous parent
 			OnDisconnect(self, OldParent, true)
 			hook.Run("OnUnparent", self, OldParent)
 		end
 
 		self:LegacyParent(Parent, Attachment)
 
-		if IsValid(Parent) and not Filter[Parent:GetClass()] and not Filter[self:GetClass()] then
+		if IsValid(Parent) and not ParentFilter[Parent:GetClass()] and not ParentFilter[self:GetClass()] then
 			OnConnect(self, Parent, true)
 			hook.Run("OnParent", self, Parent)
 		end
