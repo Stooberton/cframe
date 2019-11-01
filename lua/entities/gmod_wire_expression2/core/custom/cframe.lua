@@ -2,7 +2,11 @@ E2Lib.RegisterExtension("contraption", true, "Enables interaction with Contrapti
 
 local Contraptions
 
-hook.Add("CFrame Initialize", "E2", function() Contraptions = contraption.Contraptions end) -- Race conditions are bad mkay
+hook.Add("Initialize", "CFrame E2", function()
+	Contraptions = contraption.Contraptions
+
+	hook.Remove("Initialize", "CFrame E2")
+end)
 
 --=====================================================================================--
 registerType("contraption", "xcr", nil,
