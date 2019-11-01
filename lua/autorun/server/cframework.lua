@@ -122,7 +122,6 @@ local function DestroyContraption(Contraption)
 end
 
 local function Initialize(Entity, Physical)
-	print(Entity, "Initialized", Physical and "with physics" or "without physics")
 	Entity.CFWRK = {
 		Connections = {},
 		IsPhysical = Physical
@@ -219,12 +218,8 @@ local function BFS(Start, Goal) -- Breadth first
 	return false, Closed, Count
 end
 
-local function SetPhysical(Entity, Physical) print("Physical change", Entity, Physical)
-	print(Entity.CFWRK.IsPhysical, Physical)
-	if Entity.CFWRK.IsPhysical == Physical then
-		print("Ignored, already at desired state")
-		return
-	end -- Ignore change if its already at desired state
+local function SetPhysical(Entity, Physical)
+	if Entity.CFWRK.IsPhysical == Physical then return end -- Ignore change if its already at desired state
 
 	Entity.CFWRK.IsPhysical = Physical
 
@@ -242,7 +237,6 @@ local function SetPhysical(Entity, Physical) print("Physical change", Entity, Ph
 end
 
 local function OnConnect(A, B, Parenting) -- In the case of parenting, A is the child and B the parent
-	print("OnConnect", A, B, Parenting)
 	local AC = A.CFWRK and A.CFWRK.Contraption or nil
 	local BC = B.CFWRK and B.CFWRK.Contraption or nil
 
