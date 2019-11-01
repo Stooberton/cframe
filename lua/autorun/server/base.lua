@@ -83,7 +83,7 @@ end
 -------------------------------------------------- Contraption creation, removal and addition
 
 local function CreateContraption()
-	contraption.Count = contraption.Count+1
+	contraption.Count = contraption.Count + 1
 
 	local Contraption = {
 		IsContraption = true,
@@ -136,7 +136,7 @@ local function Append(Contraption, Entity, Parent)
 	if Parent then Contraption.Ents.Parented[Entity] = true
 			  else Contraption.Ents.Physical[Entity] = true end
 
-	Contraption.Ents.Count = Contraption.Ents.Count+1
+	Contraption.Ents.Count = Contraption.Ents.Count + 1
 
 	Entity.CFrame.Contraption = Contraption
 
@@ -196,7 +196,7 @@ local function BFS(Start, Goal) -- Breadth first
 		for K in pairs(Node.CFrame.Connections) do
 			if not Closed[K] then
 				Open[K] = true
-				Count = Count+1
+				Count = Count + 1
 			end
 		end
 	end
@@ -251,8 +251,8 @@ local function OnConnect(A, B, IsParent)
 	local AConnect = A.CFrame.Connections
 	local BConnect = B.CFrame.Connections
 
-	AConnect[B] = (AConnect[B] or 0)+1
-	BConnect[A] = (BConnect[A] or 0)+1
+	AConnect[B] = (AConnect[B] or 0) + 1
+	BConnect[A] = (BConnect[A] or 0) + 1
 end
 
 local function OnDisconnect(A, B, IsParent)
@@ -334,7 +334,7 @@ hook.Add("OnEntityCreated", "CFrame Created", function(Constraint)
 	if ConstraintTypes[Constraint:GetClass()] then
 		-- We must wait because the Constraint's information is set after the constraint is created
 		-- Setting information when it's created will be removed by SetTable called on the constraint immediately after it's made
-		timer.Simple(0, function() print("Timer")
+		timer.Simple(0, function()
 			if not IsValid(Constraint) then return end
 
 			Constraint.Initialized = true -- Required check on EntityRemoved to handle constraints created and deleted in the same tick
@@ -388,7 +388,7 @@ end)
 
 -------------------------------------------------- Load Modules
 
-for K, V in pairs(file.Find("modules/*", "LUA")) do
+for _, V in pairs(file.Find("modules/*", "LUA")) do
 	if string.Left(V, 2) ~= "cl" then
 		Msg("Mounting " .. V .. " module\n")
 		include("modules/" .. V)
