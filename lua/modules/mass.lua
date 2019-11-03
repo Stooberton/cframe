@@ -45,6 +45,8 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 		Meta.LegacyMass = Meta.SetMass
 
 	function Meta:SetMass(NewMass)
+		if not IsValid(self) then return end
+
 		local CF = cframe.Get(self:GetEntity())
 
 		if CF then
