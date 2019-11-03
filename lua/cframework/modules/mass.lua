@@ -45,20 +45,22 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 		Meta.LegacyMass = Meta.SetMass
 
 	function Meta:SetMass(NewMass)
-		local CF = cframe.Get(self:GetEntity())
+		if IsValid(self) then
+			local CF = cframe.Get(self:GetEntity())
 
-		if CF then
-			local Mass  = CF.Mass
-			local Delta = NewMass - self:GetMass()
+			if CF then
+				local Mass  = CF.Mass
+				local Delta = NewMass - self:GetMass()
 
-			local NewTotal = Mass.Total + Delta
+				local NewTotal = Mass.Total + Delta
 
-			if NewTotal > 0 then -- Sanity checking because spawning dupes does some freaky shit
+				if NewTotal > 0 then -- Sanity checking because spawning dupes does some freaky shit
 
-				Mass.Total = NewTotal
+					Mass.Total = NewTotal
 
-				if CF.IsPhysical then Mass.Physical = Mass.Physical + Delta
-								 else Mass.Parented = Mass.Parented + Delta end
+					if CF.IsPhysical then Mass.Physical = Mass.Physical + Delta
+									 else Mass.Parented = Mass.Parented + Delta end
+				end
 			end
 		end
 

@@ -44,27 +44,19 @@ end
 e2function contraption entity:contraption()
 	if not IsValid(this) then return nil end
 
-	if this.CFWRK then
-		return this.CFWRK.Contraption
-	else
-		return nil
-	end
+	return cframe.Get(this)
 end
 
 -- Return the E2s own contraption
 e2function contraption contraption()
-	if self.CFWRK then
-		return self.CFWRK.Contraption
-	else
-		return nil
-	end
+	return cframe.Get(self.entity)
 end
 
 -- Return an array of all contraptions
 e2function array contraptions()
 	local Arr = {}
 
-	for K in pairs(Contraptions) do Arr[#Arr+1] = K end
+	for K in pairs(Contraptions) do Arr[#Arr + 1] = K end
 
 	return Arr
 end
@@ -78,13 +70,13 @@ e2function array contraption:entities()
 	local Count = 0
 
 	for K in pairs(Ents.Physical) do
-		Count = Count+1
+		Count = Count + 1
 		Arr[Count] = K
 	end
 
 	if next(Ents.Parented) then
 		for K in pairs(Ents.Physical) do
-			Count = Count+1
+			Count = Count + 1
 			Arr[Count] = K
 		end
 	end
@@ -101,7 +93,7 @@ e2function array contraption:physicalEntities()
 	local Count = 0
 
 	for K in pairs(Ents.Physical) do
-		Count = Count+1
+		Count = Count + 1
 		Arr[Count] = K
 	end
 
@@ -118,7 +110,7 @@ e2function array contraption:parentedEntities()
 	local Count = 0
 
 	for K in pairs(Ents.Parented) do
-		Count = Count+1
+		Count = Count + 1
 		Arr[Count] = K
 	end
 

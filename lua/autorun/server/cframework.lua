@@ -55,11 +55,12 @@ do
 	end
 
 	function cframe.HasConstraints(Entity) -- Returns bool whether an entity has constraints (that cframe monitors)
-		if Entity.Constraints and next(Entity.Constraints) then
-			for K, V in pairs(Entity.Constraints) do
-				if ConstraintTypes[V:GetClass()] then
-					return true
-				end
+		if not Entity.Constraints then return false end
+		if not next(Entity.Constraints) then return false end
+
+		for _, V in pairs(Entity.Constraints) do
+			if ConstraintTypes[V:GetClass()] then
+				return true
 			end
 		end
 
@@ -409,13 +410,13 @@ end)
 
 -------------------------------------------------- Load Modules
 
-for _, V in pairs(file.Find("modules/*", "LUA")) do
+for _, V in pairs(file.Find("cframework/modules/*", "LUA")) do
 	if string.Left(V, 2) ~= "cl" then
-		Msg("Mounting " .. V .. " module\n")
-		include("modules/" .. V)
+		MsgN("[CFrame] Mounting " .. V .. " module")
+		include("cframework/modules/" .. V)
 	else
-		Msg("Sending " .. V .. " module\n")
-		AddCSLuaFile("modules/" .. V)
+		MsgN("[CFrame] Sending " .. V .. " module")
+		AddCSLuaFile("cframework/modules/" .. V)
 	end
 end
 
