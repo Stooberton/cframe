@@ -409,13 +409,13 @@ end)
 
 -------------------------------------------------- Load Modules
 
-for _, V in pairs(file.Find("modules/*", "LUA")) do
+for _, V in pairs(file.Find("cframework/modules/*", "LUA")) do
 	if string.Left(V, 2) ~= "cl" then
-		Msg("Mounting " .. V .. " module\n")
-		include("modules/" .. V)
+		MsgN("[CFrame] Mounting " .. V .. " module")
+		include("cframework/modules/" .. V)
 	else
-		Msg("Sending " .. V .. " module\n")
-		AddCSLuaFile("modules/" .. V)
+		MsgN("[CFrame] Sending " .. V .. " module")
+		AddCSLuaFile("cframework/modules/" .. V)
 	end
 end
 
