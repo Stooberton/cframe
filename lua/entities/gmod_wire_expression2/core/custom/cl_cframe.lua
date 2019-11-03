@@ -1,5 +1,6 @@
 local D = E2Helper.Descriptions
 
+D["isValid(xcr:)"] = "Returns 1 if the contraption is valid, 0 otherwise"
 D["contraptions()"] = "Returns an array of all contraptions"
 D["contraption(e:)"] = "Returns an entity's contraption"
 D["contraption()"] = "Returns this E2s contraption"
