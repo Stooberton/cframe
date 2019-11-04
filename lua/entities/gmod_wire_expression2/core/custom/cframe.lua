@@ -26,8 +26,9 @@ registerOperator("ass", "xcr", "xcr", function(self, args)
 end)
 
 e2function number operator_is(contraption cont)
-	if cont and Contraptions[cont] then return 1
-	else return 0 end
+	if not IsValid(cont) then return false end
+
+	return Contraptions[cont] or false
 end
 
 --=====================================================================================--
