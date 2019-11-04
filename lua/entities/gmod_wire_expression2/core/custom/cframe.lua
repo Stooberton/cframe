@@ -31,6 +31,14 @@ e2function number operator_is(contraption cont)
 	return Contraptions[cont] or false
 end
 
+e2function number operator==(contraption c1, contraption c2)
+	return c1 == c2 and 1 or 0
+end
+
+e2function number operator!=(contraption c1, contraption c2)
+	return c1 ~= c2 and 1 or 0
+end
+
 --=====================================================================================--
 
 __e2setcost(5)
