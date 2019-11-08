@@ -1,7 +1,5 @@
 E2Lib.RegisterExtension("contraption", true, "Enables interaction with Contraption Framework")
 
-local Contraptions = cframe.Contraptions
-
 --=====================================================================================--
 registerType("contraption", "xcr", nil,
 	nil,
@@ -26,9 +24,9 @@ registerOperator("ass", "xcr", "xcr", function(self, args)
 end)
 
 e2function number operator_is(contraption cont)
-	if not IsValid(cont) then return false end
+	if not cont then return 0 end
 
-	return Contraptions[cont] or false
+	return cframe.Contraptions[cont] and 1 or 0
 end
 
 e2function number operator==(contraption c1, contraption c2)
@@ -39,14 +37,20 @@ e2function number operator!=(contraption c1, contraption c2)
 	return c1 ~= c2 and 1 or 0
 end
 
+local function IsValidContraption(Cont)
+	if Cont and cframe.Contraptions[Cont] then
+		return true
+	else
+		return false
+	end
+end
 --=====================================================================================--
 
 __e2setcost(5)
 
 e2function number contraption:isValid()
-	if IsValid(this) and Contraptions[this] then return 1 end
-
-	return 0
+	print(this.IsContraption)
+	return IsValidContraption(this) and 1 or 0
 end
 
 -- Return an entity's contraption
@@ -58,6 +62,8 @@ end
 
 -- Return the E2s own contraption
 e2function contraption contraption()
+	if not self then return nil end
+
 	return cframe.Get(self.entity)
 end
 
@@ -65,14 +71,23 @@ end
 e2function array contraptions()
 	local Arr = {}
 
-	for K in pairs(Contraptions) do Arr[#Arr + 1] = K end
+	for K in pairs(cframe.Contraptions) do Arr[#Arr + 1] = K end
 
 	return Arr
 end
 
+e2function number contraption:contains(entity Ent)
+	if not IsValidContraption(this) then return 0 end
+	if not IsValid(Ent) then return 0 end
+
+	if this.Ents.Physical[Ent] then return 1 end
+	if this.Ents.Parented[Ent] then return 1 end
+
+	return 0
+end
 -- Return an array of all entities in a contraption
 e2function array contraption:entities()
-	if not Contraptions[this] then return {} end
+	if not IsValidContraption(this) then return {} end
 
 	local Ents  = this.Ents
 	local Arr   = {}
@@ -95,7 +110,7 @@ end
 
 -- Return an array of all physical entities in a contraption
 e2function array contraption:physicalEntities()
-	if not Contraptions[this] then return {} end
+	if not IsValidContraption(this) then return {} end
 
 	local Ents  = this.Ents
 	local Arr   = {}
@@ -111,7 +126,7 @@ end
 
 -- Return an array of all parented entities in a contraption
 e2function array contraption:parentedEntities()
-	if not Contraptions[this] then return {} end
+	if not IsValidContraption(this) then return {} end
 	if not next(Ents.Parented) then return {} end
 
 	local Ents  = this.Ents
@@ -128,25 +143,25 @@ end
 
 -- Return the number of entities that make up this contraption
 e2function number contraption:count()
-	if not Contraptions[this] then return 0 end
+	if not IsValidContraption(this) then return 0 end
 
 	return this.Ents.Count
 end
 
 e2function number contraption:getMass()
-	if not Contraptions[this] then return 0 end
+	if not IsValidContraption(this) then return 0 end
 
 	return cframe.GetMass(this)
 end
 
 e2function number contraption:getPhysicalMass()
-	if not Contraptions[this] then return 0 end
+	if not IsValidContraption(this) then return 0 end
 
 	return cframe.GetPhysMass(this)
 end
 
 e2function number contraption:getParentedMass()
-	if not Contraptions[this] then return 0 end
+	if not IsValidContraption(this) then return 0 end
 
 	return cframe.GetParentedMass(this)
 end
