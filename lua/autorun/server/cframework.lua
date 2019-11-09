@@ -13,13 +13,6 @@ if not cframe then
 			phys_torque = true,
 			phys_pulleyconstraint = true,
 			phys_ballsocket = true
-		},
-		Modules = {
-			Connect = {},
-			Disconnect = {},
-			Create = {},
-			Destroy = {},
-			Initialize = {}
 		}
 	}
 end
@@ -27,72 +20,10 @@ end
 -------------------------------------------------- Localization
 
 local Contraptions    = cframe.Contraptions
-local Modules         = cframe.Modules
 local ParentFilter	  = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger filters
 local ConstraintTypes = cframe.ConstraintTypes
+local HRUN            = hook.Run
 
--------------------------------------------------- Contraption Lib
-do
-	function cframe.GetAll() -- Return a table of all contraptions
-		return Contraptions
-	end
-
-	function cframe.Get(Entity) -- Return an entity's contraption
-		return Entity.CFWRK and Entity.CFWRK.Contraption or nil
-	end
-
-	function cframe.GetConstraintTypes() -- Return a table of the constraint types cframe is monitoring
-		local Tab = {}; for K in pairs(cframe.ConstraintTypes) do Tab[K] = true end
-		return Tab
-	end
-
-	function cframe.AddConstraint(Name) -- Add a constraint to be monitored by cframe
-		ConstraintTypes[Name] = true
-	end
-
-	function cframe.RemoveConstraint(Name)
-		ConstraintTypes[Name] = nil
-	end
-
-	function cframe.HasConstraints(Entity) -- Returns bool whether an entity has constraints (that cframe monitors)
-		if not Entity.Constraints then return false end
-		if not next(Entity.Constraints) then return false end
-
-		for _, V in pairs(Entity.Constraints) do
-			if ConstraintTypes[V:GetClass()] then
-				return true
-			end
-		end
-
-		return false
-	end
-
-	function cframe.AddModule(Name, Init, Connect, Disconnect, Create, Destroy) -- Adds or modifies a module to cframe
-		Modules.Initialize[Name] = Init
-		Modules.Connect[Name]    = Connect
-		Modules.Disconnect[Name] = Disconnect
-		Modules.Create[Name]     = Create
-		Modules.Destroy[Name]    = Destroy
-	end
-
-	function cframe.RemoveModule(Name) -- Removes/disables a module
-		Modules.Initialize[Name] = nil
-		Modules.Connect[Name]    = nil
-		Modules.Disconnect[Name] = nil
-		Modules.Create[Name]     = nil
-		Modules.Destroy[Name]    = nil
-	end
-
-	function cframe.Module(Name) -- Check if a module exists
-		if Modules.Initialize[Name] then return true end
-		if Modules.Connect[Name] then return true end
-		if Modules.Disconnect[Name] then return true end
-		if Modules.Create[Name] then return true end
-		if Modules.Destroy[Name] then return true end
-
-		return false
-	end
-end
 -------------------------------------------------- Contraption creation, removal and addition
 
 local function CreateContraption()
@@ -109,7 +40,7 @@ local function CreateContraption()
 
 	Contraptions[Contraption] = true
 
-	for _, V in pairs(Modules.Create) do V(Contraption) end
+	HRUN("CFrame Create", Contraption)
 
 	return Contraption
 end
@@ -117,7 +48,7 @@ end
 local function DestroyContraption(Contraption)
 	Contraptions[Contraption] = nil
 
-	for _, V in pairs(Modules.Destroy) do V(Contraption) end
+	HRUN("CFrame Destroy", Contraption)
 
 	for K in pairs(Contraption) do Contraption[K] = nil end -- Just in case... can't rely on module makers to clean up references to a contraption
 end
@@ -128,7 +59,7 @@ local function Initialize(Entity, Physical)
 		IsPhysical = Physical
 	}
 
-	for _, V in pairs(Modules.Initialize) do V(Entity, Physical) end
+	hook.Run("CFrame InitEntity", Entity, Physical)
 end
 
 local function Pop(Contraption, Entity, Parent)
@@ -137,7 +68,7 @@ local function Pop(Contraption, Entity, Parent)
 
 	Contraption.Ents.Count = Contraption.Ents.Count-1
 
-	for _, V in pairs(Modules.Disconnect) do V(Contraption, Entity, Parent) end
+	HRUN("CFrame Disconnect", Contraption, Entity, Parent)
 
 	if Contraption.Ents.Count == 0 then DestroyContraption(Contraption) end
 
@@ -153,7 +84,7 @@ local function Append(Contraption, Entity, Parent)
 
 	Entity.CFWRK.Contraption = Contraption
 
-	for _, V in pairs(Modules.Connect) do V(Contraption, Entity, Parent) end
+	HRUN("CFrame Connect", Contraption, Entity, Parent)
 end
 
 local function Merge(A, B)
@@ -234,7 +165,7 @@ local function SetPhysical(Entity, Physical)
 		Ents.Physical[Entity] = nil
 	end
 
-	hook.Run("OnPhysicalChange", Entity, Physical)
+	HRUN("CFrame PhysChange", Entity, Physical)
 end
 
 local function OnConnect(A, B, Parenting) -- In the case of parenting, A is the child and B the parent
@@ -367,7 +298,7 @@ hook.Add("OnEntityCreated", "CFrame Created", function(Constraint)
 			if A == B then return end -- We also don't care about constraints attaching an entity to itself, see above
 
 			OnConnect(A, B)
-			hook.Run("OnConstraintCreated", Constraint)
+			HRUN("OnConstraintCreated", Constraint)
 		end)
 	end
 end)
@@ -380,7 +311,7 @@ hook.Add("EntityRemoved", "CFrame Removed", function(Constraint)
 		if A == B then return end -- We don't care about constraints attaching an entity to itself
 
 		OnDisconnect(A, B)
-		hook.Run("OnConstraintRemoved", Constraint)
+		HRUN("OnConstraintRemoved", Constraint)
 	end
 end)
 
@@ -394,14 +325,14 @@ hook.Add("Initialize", "CFrame Init", function() -- We only want to hijack the S
 
 		if IsValid(OldParent) and not ParentFilter[OldParent:GetClass()] and not ParentFilter[self:GetClass()] then -- It's only an 'Unparent' if there was a previous parent
 			OnDisconnect(self, OldParent, true)
-			hook.Run("OnUnparent", self, OldParent)
+			HRUN("OnUnparent", self, OldParent)
 		end
 
 		self:LegacyParent(Parent, Attachment)
 
 		if IsValid(Parent) and not ParentFilter[Parent:GetClass()] and not ParentFilter[self:GetClass()] then
 			OnConnect(self, Parent, true)
-			hook.Run("OnParent", self, Parent)
+			HRUN("OnParent", self, Parent)
 		end
 	end
 
@@ -420,5 +351,42 @@ for _, V in pairs(file.Find("cframework/modules/*", "LUA")) do
 	end
 end
 
+-------------------------------------------------- Contraption Framework Library
+do
+	function cframe.GetAll() -- Return a table of all contraptions
+		return Contraptions
+	end
+
+	function cframe.Get(Entity) -- Return an entity's contraption
+		return Entity.CFWRK and Entity.CFWRK.Contraption or nil
+	end
+
+	function cframe.GetConstraintTypes() -- Return a table of the constraint types cframe is monitoring
+		local Tab = {}; for K in pairs(cframe.ConstraintTypes) do Tab[K] = true end
+		return Tab
+	end
+
+	function cframe.AddConstraint(Name) -- Add a constraint to be monitored by cframe
+		ConstraintTypes[Name] = true
+	end
+
+	function cframe.RemoveConstraint(Name)
+		ConstraintTypes[Name] = nil
+	end
+
+	function cframe.HasConstraints(Entity) -- Returns bool whether an entity has constraints (that cframe monitors)
+		if not Entity.Constraints then return false end
+		if not next(Entity.Constraints) then return false end
+
+		for _, V in pairs(Entity.Constraints) do
+			if ConstraintTypes[V:GetClass()] then
+				return true
+			end
+		end
+
+		return false
+	end
+end
+
 -------------------------------------------------- Run Initialize hook
-hook.Run("CFrame Initialize")
+HRUN("CFrame Initialize")

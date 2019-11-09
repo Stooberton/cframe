@@ -1,4 +1,12 @@
-local function OnConnect(Contraption, Entity, Parent) -- Add mass to contraption
+hook.Add("CFrame Create", function(Contraption) -- Initialize the Mass table when a contraption is created
+	Contraption.Mass = {
+		Total    = 0,
+		Physical = 0,
+		Parented = 0
+	}
+end)
+
+hook.Add("CFrame Connect", function(Contraption, Entity, Parent) -- Add mass to contraption
 	local Phys = Entity:GetPhysicsObject()
 
 	if not IsValid(Phys) then return end
@@ -10,9 +18,9 @@ local function OnConnect(Contraption, Entity, Parent) -- Add mass to contraption
 
 	if Parent then Mass.Parented = Mass.Parented + Delta
 			  else Mass.Physical = Mass.Physical + Delta end
-end
+end)
 
-local function OnDisconnect(Contraption, Entity, Parent) -- Subtract mass from contraption
+hook.Add("CFrame Disconnect", function(Contraption, Entity, Parent) -- Subtract mass from contraption
 	local Phys = Entity:GetPhysicsObject()
 
 	if not IsValid(Phys) then return end
@@ -24,18 +32,7 @@ local function OnDisconnect(Contraption, Entity, Parent) -- Subtract mass from c
 
 	if Parent then Mass.Parented = Mass.Parented - Delta
 			  else Mass.Physical = Mass.Physical - Delta end
-end
-
-local function OnCreate(Contraption) -- Initialize the Mass table
-	Contraption.Mass = {
-		Total    = 0,
-		Physical = 0,
-		Parented = 0
-	}
-end
-
-cframe.AddModule("mass", nil, OnConnect, OnDisconnect, OnCreate, nil)
-
+end)
 
 ------------------------------------
 -- Tracking mass/physicality changes
@@ -70,7 +67,7 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 	hook.Remove("Initialize", "CFrame Mass Module")
 end)
 
-hook.Add("OnPhysicalChange", "CFrame Mass Module", function(Entity, IsPhysical)
+hook.Add("CFrame PhysChange", "CFrame Mass Module", function(Entity, IsPhysical)
 	local Phys = Entity:GetPhysicsObject()
 
 	if not IsValid(Phys) then return end

@@ -49,7 +49,6 @@ end
 __e2setcost(5)
 
 e2function number contraption:isValid()
-	print(this.IsContraption)
 	return IsValidContraption(this) and 1 or 0
 end
 
@@ -62,8 +61,6 @@ end
 
 -- Return the E2s own contraption
 e2function contraption contraption()
-	if not self then return nil end
-
 	return cframe.Get(self.entity)
 end
 
