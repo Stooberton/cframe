@@ -23,10 +23,11 @@ local Contraptions    = cframe.Contraptions
 local ParentFilter	  = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger filters
 local ConstraintTypes = cframe.ConstraintTypes
 local HRUN            = hook.Run
+local HasConstraints  = cframe.HasConstraints
 
 -------------------------------------------------- Contraption creation, removal and addition
 
-local function CreateContraption()
+local function CreateContraption() -- Create a contraption (Two entities will be subsequently Appended)
 	cframe.Count = cframe.Count + 1
 
 	local Contraption = {
@@ -45,15 +46,15 @@ local function CreateContraption()
 	return Contraption
 end
 
-local function DestroyContraption(Contraption)
+local function DestroyContraption(Contraption) -- Remove a contraption once it's empty
 	Contraptions[Contraption] = nil
 
 	HRUN("CFrame Destroy", Contraption)
 
-	for K in pairs(Contraption) do Contraption[K] = nil end -- Just in case... can't rely on module makers to clean up references to a contraption
+	for K in pairs(Contraption) do Contraption[K] = nil end -- Little cleanup
 end
 
-local function Initialize(Entity, Physical)
+local function Initialize(Entity, Physical) -- Prepare an entity for cframe
 	Entity.CFWRK = {
 		Connections = {},
 		IsPhysical = Physical
@@ -62,7 +63,7 @@ local function Initialize(Entity, Physical)
 	hook.Run("CFrame InitEntity", Entity, Physical)
 end
 
-local function Pop(Contraption, Entity, Parent)
+local function Pop(Contraption, Entity, Parent) -- An entity is removed from a contraption
 	if Parent then Contraption.Ents.Parented[Entity] = nil
 			  else Contraption.Ents.Physical[Entity] = nil end
 
@@ -76,7 +77,7 @@ local function Pop(Contraption, Entity, Parent)
 	if not next(Entity.CFWRK.Connections) then Entity.CFWRK = nil end
 end
 
-local function Append(Contraption, Entity, Parent)
+local function Append(Contraption, Entity, Parent) -- An entity is added to an existing contraption
 	if Parent then Contraption.Ents.Parented[Entity] = true
 			  else Contraption.Ents.Physical[Entity] = true end
 
@@ -87,7 +88,7 @@ local function Append(Contraption, Entity, Parent)
 	HRUN("CFrame Connect", Contraption, Entity, Parent)
 end
 
-local function Merge(A, B)
+local function Merge(A, B) -- Combine two contraptions and remove the smaller one
 	local Big, Small
 
 	if A.Ents.Count >= B.Ents.Count then Big, Small = A, B
@@ -112,7 +113,8 @@ end
 
 -------------------------------------------------- Logic
 
-local function FF(Entity, Filter) -- Depth first
+
+local function FF(Entity, Filter) -- Flood filling. Depth first
 	if not IsValid(Entity) then return Filter end
 
 	Filter[Entity] = true
@@ -124,7 +126,7 @@ local function FF(Entity, Filter) -- Depth first
 	return Filter
 end
 
-local function BFS(Start, Goal) -- Breadth first
+local function BFS(Start, Goal) -- Flood filling. Breadth first
 	local Closed = {}
 	local Open   = {};	for K in pairs(Start.CFWRK.Connections) do Open[K] = true end -- Quick copy
 	local Count  = #Open
@@ -150,7 +152,7 @@ local function BFS(Start, Goal) -- Breadth first
 	return false, Closed, Count
 end
 
-local function SetPhysical(Entity, Physical)
+local function SetPhysical(Entity, Physical) -- Change the stored state of an entity
 	if Entity.CFWRK.IsPhysical == Physical then return end -- Ignore change if its already at desired state
 
 	Entity.CFWRK.IsPhysical = Physical
@@ -168,20 +170,23 @@ local function SetPhysical(Entity, Physical)
 	HRUN("CFrame PhysChange", Entity, Physical)
 end
 
-local function OnConnect(A, B, Parenting) -- In the case of parenting, A is the child and B the parent
+local function OnConnect(A, B, Parenting) -- Whenever entities are constrained/parented. In the case of parenting, A is the child and B the parent
 	local AC = A.CFWRK and A.CFWRK.Contraption or nil
 	local BC = B.CFWRK and B.CFWRK.Contraption or nil
 
 	if AC and BC then
-		if Parenting and not cframe.HasConstraints(A) then -- Parenting with no constraints existing makes this not physical
+		if Parenting and not HasConstraints(A) then -- Parenting with no constraints existing makes this not physical
 			SetPhysical(A, false)
 		elseif A:GetParent() then -- Being already parenting and adding a constraint makes this physical
 			SetPhysical(A, true)
 		end
 
 		if AC ~= BC then Merge(AC, BC) end -- Merge the contraptions if they're not the same
+
+		-- Otherwise, do nothing, these two entities are already connected to the same contraption
+
 	elseif AC then
-		if Parenting and not cframe.HasConstraints(A) then
+		if Parenting and not HasConstraints(A) then
 			SetPhysical(A, false)
 		elseif A:GetParent() then
 			SetPhysical(A, true)
@@ -211,11 +216,11 @@ local function OnConnect(A, B, Parenting) -- In the case of parenting, A is the 
 	BConnect[A] = (BConnect[A] or 0) + 1
 end
 
-local function OnDisconnect(A, B, IsParent)
+local function OnDisconnect(A, B, Parenting) -- Whenever entities lose a contraint/parent.
 	-- Prove whether A is still connected to B or not
 	-- If not: A new contraption is created (Assuming A and B are both connected to more than one thing)
 
-	if IsParent then SetPhysical(A, true) end -- Removal of a parent makes A physical
+	if Parenting then SetPhysical(A, true) end -- Removal of a parent makes A physical
 
 	local AFrame       = A.CFWRK
 	local AConnections = AFrame.Connections
@@ -250,7 +255,7 @@ local function OnDisconnect(A, B, IsParent)
 		-- Parented Ents with no physical constraint always have only one connection to the contraption
 		-- If the thing removed was a parent and A is not physical then the two ents are definitely not connected
 		-- All entities in A's contraption must therefore be parented children and need to be transferred
-		if IsParent and not AFrame.IsPhysical then
+		if Parenting and not AFrame.IsPhysical then
 			local Collection = FF(A, {})
 			local To         = CreateContraption()
 			local From       = Contraption
@@ -294,7 +299,7 @@ hook.Add("OnEntityCreated", "CFrame Created", function(Constraint)
 
 			local A, B = Constraint.Ent1, Constraint.Ent2
 
-			if not IsValid(A) or not IsValid(B) then return end -- Contraptions consist of multiple Ents not one
+			if not IsValid(A) or not IsValid(B) then return end -- Contraptions consist of multiple ents not one
 			if A == B then return end -- We also don't care about constraints attaching an entity to itself, see above
 
 			OnConnect(A, B)
@@ -315,7 +320,7 @@ hook.Add("EntityRemoved", "CFrame Removed", function(Constraint)
 	end
 end)
 
-hook.Add("Initialize", "CFrame Init", function() -- We only want to hijack the SetParent function once
+hook.Add("Initialize", "CFrame Init", function() -- We only want to detour the SetParent function once
 	local Meta = FindMetaTable("Entity")
 
 	Meta.LegacyParent = Meta.SetParent
@@ -366,12 +371,12 @@ do
 		return Tab
 	end
 
-	function cframe.AddConstraint(Name) -- Add a constraint to be monitored by cframe
-		ConstraintTypes[Name] = true
+	function cframe.AddConstraint(Class) -- Add a constraint to be monitored by cframe
+		ConstraintTypes[Class] = true
 	end
 
-	function cframe.RemoveConstraint(Name)
-		ConstraintTypes[Name] = nil
+	function cframe.RemoveConstraint(Class)
+		ConstraintTypes[Class] = nil
 	end
 
 	function cframe.HasConstraints(Entity) -- Returns bool whether an entity has constraints (that cframe monitors)
