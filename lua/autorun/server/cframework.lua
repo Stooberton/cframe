@@ -13,7 +13,8 @@ if not cframe then
 			phys_torque = true,
 			phys_pulleyconstraint = true,
 			phys_ballsocket = true
-		}
+		},
+		Callbacks = { OnConnect = {}, OnDisconnect = {}, OnInit = {} }
 	}
 end
 
@@ -24,7 +25,7 @@ local ParentFilter	  = {predicted_viewmodel = true, gmod_hands = true} -- Parent
 local ConstraintTypes = cframe.ConstraintTypes
 local HRUN            = hook.Run
 local HasConstraints  = cframe.HasConstraints
-
+local Callbacks       = cframe.Callbacks
 -------------------------------------------------- Contraption creation, removal and addition
 
 local function CreateContraption() -- Create a contraption (Two entities will be subsequently Appended)
@@ -60,6 +61,10 @@ local function Initialize(Entity, Physical) -- Prepare an entity for cframe
 		IsPhysical = Physical
 	}
 
+	if Callbacks.OnInit[Entity] then
+		Entity:OnInit(Physical)
+	end
+
 	hook.Run("CFrame InitEntity", Entity, Physical)
 end
 
@@ -68,6 +73,10 @@ local function Pop(Contraption, Entity, Parent) -- An entity is removed from a c
 			  else Contraption.Ents.Physical[Entity] = nil end
 
 	Contraption.Ents.Count = Contraption.Ents.Count-1
+
+	if Callbacks.OnDisconnect[Entity] then
+		Entity:OnDisconnect(Contraption, Parent)
+	end
 
 	HRUN("CFrame Disconnect", Contraption, Entity, Parent)
 
@@ -84,6 +93,10 @@ local function Append(Contraption, Entity, Parent) -- An entity is added to an e
 	Contraption.Ents.Count = Contraption.Ents.Count + 1
 
 	Entity.CFWRK.Contraption = Contraption
+
+	if Callbacks.OnConnect[Entity] then
+		Entity:OnConnect(Contraption, Parent)
+	end
 
 	HRUN("CFrame Connect", Contraption, Entity, Parent)
 end
@@ -165,6 +178,10 @@ local function SetPhysical(Entity, Physical) -- Change the stored state of an en
 	else
 		Ents.Parented[Entity] = true
 		Ents.Physical[Entity] = nil
+	end
+
+	if Callbacks.OnPhysChange[Entity] then
+		Entity:OnPhysChange(Physical)
 	end
 
 	HRUN("CFrame PhysChange", Entity, Physical)
@@ -338,6 +355,14 @@ hook.Add("Initialize", "CFrame Init", function() -- We only want to detour the S
 		if IsValid(Parent) and not ParentFilter[Parent:GetClass()] and not ParentFilter[self:GetClass()] then
 			OnConnect(self, Parent, true)
 			HRUN("OnParent", self, Parent)
+		end
+	end
+
+	function Meta:AddCFrameCallback(Callback)
+		if Callbacks[Callback] then
+			Callbacks[Callback][self] = true
+		else
+			error("AddCFrameCallback: invalid callback")
 		end
 	end
 
