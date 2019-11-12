@@ -32,7 +32,7 @@ local function IsValidContraption(Cont)
 end
 
 e2function number operator_is(contraption cont)
-	return IsValidContraption(cont)
+	return IsValidContraption(cont) and 1 or 0
 end
 
 e2function number operator==(contraption c1, contraption c2)
