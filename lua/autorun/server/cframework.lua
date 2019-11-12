@@ -48,6 +48,8 @@ local function CreateContraption() -- Create a contraption (Two entities will be
 end
 
 local function DestroyContraption(Contraption) -- Remove a contraption once it's empty
+	cframe.Count = cframe.Count - 1
+
 	Contraptions[Contraption] = nil
 
 	HRUN("CFrame Destroy", Contraption)
