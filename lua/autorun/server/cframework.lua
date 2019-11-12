@@ -394,7 +394,7 @@ do
 	end
 
 	function cframe.GetConstraintTypes() -- Return a table of the constraint types cframe is monitoring
-		local Tab = {}; for K in pairs(cframe.ConstraintTypes) do Tab[K] = true end
+		local Tab = {}; for K in pairs(ConstraintTypes) do Tab[K] = true end
 		return Tab
 	end
 

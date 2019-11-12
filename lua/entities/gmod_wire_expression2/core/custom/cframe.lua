@@ -23,10 +23,16 @@ registerOperator("ass", "xcr", "xcr", function(self, args)
 	return rhs
 end)
 
-e2function number operator_is(contraption cont)
-	if not cont then return 0 end
+local function IsValidContraption(Cont)
+	if Cont and cframe.Contraptions[Cont] then
+		return true
+	else
+		return false
+	end
+end
 
-	return cframe.Contraptions[cont] and 1 or 0
+e2function number operator_is(contraption cont)
+	return IsValidContraption(cont) and 1 or 0
 end
 
 e2function number operator==(contraption c1, contraption c2)
@@ -37,13 +43,6 @@ e2function number operator!=(contraption c1, contraption c2)
 	return c1 ~= c2 and 1 or 0
 end
 
-local function IsValidContraption(Cont)
-	if Cont and cframe.Contraptions[Cont] then
-		return true
-	else
-		return false
-	end
-end
 --=====================================================================================--
 
 __e2setcost(5)
