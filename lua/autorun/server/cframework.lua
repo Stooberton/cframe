@@ -14,7 +14,7 @@ if not cframe then
 			phys_pulleyconstraint = true,
 			phys_ballsocket = true
 		},
-		Callbacks = { OnConnect = {}, OnDisconnect = {}, OnInit = {} }
+		Callbacks = { OnConnect = {}, OnDisconnect = {}, OnInit = {}, OnPhysChange = {} }
 	}
 end
 

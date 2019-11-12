@@ -1,4 +1,4 @@
-hook.Add("CFrame Create", function(Contraption) -- Initialize the Mass table when a contraption is created
+hook.Add("CFrame Create", "Mass", function(Contraption) -- Initialize the Mass table when a contraption is created
 	Contraption.Mass = {
 		Total    = 0,
 		Physical = 0,
@@ -6,7 +6,7 @@ hook.Add("CFrame Create", function(Contraption) -- Initialize the Mass table whe
 	}
 end)
 
-hook.Add("CFrame Connect", function(Contraption, Entity, Parent) -- Add mass to contraption
+hook.Add("CFrame Connect", "Mass", function(Contraption, Entity, Parent) -- Add mass to contraption
 	local Phys = Entity:GetPhysicsObject()
 
 	if not IsValid(Phys) then return end
@@ -20,7 +20,7 @@ hook.Add("CFrame Connect", function(Contraption, Entity, Parent) -- Add mass to 
 			  else Mass.Physical = Mass.Physical + Delta end
 end)
 
-hook.Add("CFrame Disconnect", function(Contraption, Entity, Parent) -- Subtract mass from contraption
+hook.Add("CFrame Disconnect", "Mass", function(Contraption, Entity, Parent) -- Subtract mass from contraption
 	local Phys = Entity:GetPhysicsObject()
 
 	if not IsValid(Phys) then return end
