@@ -24,8 +24,8 @@ local Contraptions    = cframe.Contraptions
 local ParentFilter	  = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger filters
 local ConstraintTypes = cframe.ConstraintTypes
 local HRUN            = hook.Run
-local HasConstraints  = cframe.HasConstraints
 local Callbacks       = cframe.Callbacks
+local HasConstraints -- Defined later
 -------------------------------------------------- Contraption creation, removal and addition
 
 local function CreateContraption() -- Create a contraption (Two entities will be subsequently Appended)
@@ -418,6 +418,8 @@ do
 
 		return false
 	end
+
+	HasConstraints = cframe.HasConstraints
 end
 
 -------------------------------------------------- Run Initialize hook
