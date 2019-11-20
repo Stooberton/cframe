@@ -393,6 +393,43 @@ do
 		return Entity.CFWRK and Entity.CFWRK.Contraption or nil
 	end
 
+	function cframe.GetAllEntities(Var)
+		local Cont = Var.IsContraption and Var or cframe.Get(Var)
+		local Out  = {}; for K in pairs(Cont.Ents.Physical) do Out[K] = true end
+
+		if next(Cont.Ents.Parented) then
+			for K in pairs(Cont.Ents.Parented) do
+				Out[K] = true
+			end
+		end
+
+		return Out
+	end
+
+	function cframe.GetPhysicalEntities(Var)
+		local Cont = Var.IsContraption and Var or cframe.Get(Var)
+		local Out  = {}
+
+		for K in pairs(Cont.Ents.Physical) do
+			Out[K] = true
+		end
+
+		return Out
+	end
+
+	function cframe.GetParentedEntities(Var)
+		local Cont = Var.IsContraption and Var or cframe.Get(Var)
+		local Out  = {}
+
+		if next(Cont.Ents.Parented) then
+			for K in pairs(Cont.Ents.Parented) do
+				Out[K] = true
+			end
+		end
+
+		return Out
+	end
+
 	function cframe.GetConstraintTypes() -- Return a table of the constraint types cframe is monitoring
 		local Tab = {}; for K in pairs(ConstraintTypes) do Tab[K] = true end
 		return Tab
