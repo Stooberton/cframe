@@ -89,6 +89,8 @@ end)
 ------------------------------------
 
 function cframe.GetMass(Var)
+	if not Var then return 0 end
+
 	if Var.IsContraption then -- Is a contraption table
 		return Var.Mass.Total
 	elseif Var.CFWRK then -- Is an entity
@@ -99,6 +101,8 @@ function cframe.GetMass(Var)
 end
 
 function cframe.GetPhysMass(Var)
+	if not Var then return 0 end
+
 	if Var.IsContraption then
 		return Var.Mass.Physical
 	elseif Var.CFWRK then
@@ -109,6 +113,8 @@ function cframe.GetPhysMass(Var)
 end
 
 function cframe.GetParentedMass(Var)
+	if not Var then return 0 end
+
 	if Var.IsContraption then
 		return Var.Mass.Parented
 	elseif Var.CFWRK then

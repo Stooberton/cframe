@@ -390,16 +390,26 @@ do
 	end
 
 	function cframe.Get(Entity) -- Return an entity's contraption
-		return Entity.CFWRK and Entity.CFWRK.Contraption or nil
+		if not Entity then return end
+
+		return Entity.CFWRK and Entity.CFWRK.Contraption
 	end
 
 	function cframe.GetAllEntities(Var)
-		local Cont = Var.IsContraption and Var or cframe.Get(Var)
-		local Out  = {}; for K in pairs(Cont.Ents.Physical) do Out[K] = true end
+		if not Var then return {} end
 
-		if next(Cont.Ents.Parented) then
-			for K in pairs(Cont.Ents.Parented) do
+		local Cont = Var.IsContraption and Var or cframe.Get(Var)
+		local Out  = {}
+
+		if Cont then
+			for K in pairs(Cont.Ents.Physical) do
 				Out[K] = true
+			end
+
+			if next(Cont.Ents.Parented) then
+				for K in pairs(Cont.Ents.Parented) do
+					Out[K] = true
+				end
 			end
 		end
 
@@ -407,21 +417,27 @@ do
 	end
 
 	function cframe.GetPhysicalEntities(Var)
+		if not Var then return {} end
+
 		local Cont = Var.IsContraption and Var or cframe.Get(Var)
 		local Out  = {}
 
-		for K in pairs(Cont.Ents.Physical) do
-			Out[K] = true
+		if Cont then
+			for K in pairs(Cont.Ents.Physical) do
+				Out[K] = true
+			end
 		end
 
 		return Out
 	end
 
 	function cframe.GetParentedEntities(Var)
+		if not Var then return {} end
+
 		local Cont = Var.IsContraption and Var or cframe.Get(Var)
 		local Out  = {}
 
-		if next(Cont.Ents.Parented) then
+		if Cont and next(Cont.Ents.Parented) then
 			for K in pairs(Cont.Ents.Parented) do
 				Out[K] = true
 			end
@@ -431,7 +447,12 @@ do
 	end
 
 	function cframe.GetConstraintTypes() -- Return a table of the constraint types cframe is monitoring
-		local Tab = {}; for K in pairs(ConstraintTypes) do Tab[K] = true end
+		local Tab = {}
+
+		for K in pairs(ConstraintTypes) do
+			Tab[K] = true
+		end
+
 		return Tab
 	end
 
@@ -444,6 +465,7 @@ do
 	end
 
 	function cframe.HasConstraints(Entity) -- Returns bool whether an entity has constraints (that cframe monitors)
+		if not IsValid(Entity) then return false end
 		if not Entity.Constraints then return false end
 		if not next(Entity.Constraints) then return false end
 
