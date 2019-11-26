@@ -57,6 +57,8 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 
 					if CF.IsPhysical then Mass.Physical = Mass.Physical + Delta
 									 else Mass.Parented = Mass.Parented + Delta end
+
+					hook.Run("CFrame MassChange", self, Mass, NewMass)
 				end
 			end
 		end
