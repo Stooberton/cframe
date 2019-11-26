@@ -46,8 +46,9 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 			local CF = cframe.Get(self:GetEntity())
 
 			if CF then
-				local Mass  = CF.Mass
-				local Delta = NewMass - self:GetMass()
+				local Mass    = CF.Mass
+				local OldMass = self:GetMass()
+				local Delta   = NewMass - OldMass
 
 				local NewTotal = Mass.Total + Delta
 
@@ -58,7 +59,7 @@ hook.Add("Initialize", "CFrame Mass Module", function()
 					if CF.IsPhysical then Mass.Physical = Mass.Physical + Delta
 									 else Mass.Parented = Mass.Parented + Delta end
 
-					hook.Run("CFrame MassChange", self, Mass, NewMass)
+					hook.Run("CFrame MassChange", self, OldMass, NewMass)
 				end
 			end
 		end
