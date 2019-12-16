@@ -331,13 +331,13 @@ hook.Add("EntityRemoved", "CFrame Removed", function(Entity)
 	if Entity.Initialized then -- Constraint being removed
 		local A, B = Entity.Ent1, Entity.Ent2
 
-		if not IsValid(A) or not IsValid(B) then error("CFrame: Invalid ents being removed") return end
+		if not IsValid(A) or not IsValid(B) then return end
 		if A == B then return end -- We don't care about constraints attaching an entity to itself
 
 		OnDisconnect(A, B)
 		HRUN("OnConstraintRemoved", Entity)
 	elseif Entity.Constraints then -- Entity being removed
-		for Index, Con in pairs(Entity.Constraints) do
+		for _, Con in pairs(Entity.Constraints) do
 			if Con.Initialized then
 				Con.Initialized = nil -- Prevent redundant disconnects of this constraint
 				OnDisconnect(Con.Ent1, Con.Ent2)
