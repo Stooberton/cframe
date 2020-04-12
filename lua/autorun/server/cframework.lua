@@ -1,150 +1,74 @@
-if not cframe then
-	cframe = {
-		Count = 0,
-		Contraptions = {},
-		ConstraintTypes = { -- Note there is no no-collide. no-collide is not a constraint
-			phys_lengthconstraint = true,
-			phys_constraint = true,
-			phys_hinge = true,
-			phys_ragdollconstraint = true,
-			gmod_winch_controller = true,
-			phys_spring = true,
-			phys_slideconstraint = true,
-			phys_torque = true,
-			phys_pulleyconstraint = true,
-			phys_ballsocket = true
-		},
-		Callbacks = { OnConnect = {}, OnDisconnect = {}, OnInit = {}, OnPhysChange = {} }
-	}
-end
+Contraption = {
+	Contraptions = {},
+	Count = 0
+}
 
--------------------------------------------------- Localization
+local Callbacks   = { Append = {}, Pop = {}, Init = {}, State = {} }
+local TimerSimple = timer.Simple
 
-local Contraptions    = cframe.Contraptions
-local ParentFilter	  = {predicted_viewmodel = true, gmod_hands = true} -- Parent trigger filters
-local ConstraintTypes = cframe.ConstraintTypes
-local HRUN            = hook.Run
-local Callbacks       = cframe.Callbacks
-local HasConstraints -- Defined later
--------------------------------------------------- Contraption creation, removal and addition
+do -- Library -----------------------------------
+	do -- Methods
+		local ENT = FindMetaTable("Entity")
 
-local function CreateContraption() -- Create a contraption (Two entities will be subsequently Appended)
-	cframe.Count = cframe.Count + 1
+		function ENT:GetContraption()
+			return self.Contraption
+		end
 
-	local Contraption = {
-		IsContraption = true,
-		Ents = {
-			Count = 0,
-			Physical = {},
-			Parented = {}
-		}
-	}
+		function ENT:AddContraptionCallback(Callback)
+			if Callbacks[Callback] then Callback[Callback][self] = true
+			else error("AddContraptionCallback: Invalid callback name") end
+		end
 
-	Contraptions[Contraption] = true
+		function ENT:RemoveContraptionCallback(Callback)
+			if Callbacks[Callback][self] then
+				Callbacks[Callback][self] = nil
 
-	HRUN("CFrame Create", Contraption)
+				return true
+			end
 
-	return Contraption
-end
+			return false
+		end
 
-local function DestroyContraption(Contraption) -- Remove a contraption once it's empty
-	cframe.Count = cframe.Count - 1
+		function ENT:GetContraptionCallbacks()
+			local Out = {}
 
-	Contraptions[Contraption] = nil
+			for Callback, Table in pairs(Callbacks) do
+				if Table[self] then
+					Out[Callback] = true
+				end
+			end
 
-	HRUN("CFrame Destroy", Contraption)
-
-	for K in pairs(Contraption) do Contraption[K] = nil end -- Little cleanup
-end
-
-local function Initialize(Entity, Physical) -- Prepare an entity for cframe
-	Entity.CFWRK = {
-		Connections = {},
-		IsPhysical = Physical
-	}
-
-	if Callbacks.OnInit[Entity] then
-		Entity:OnInit(Physical)
-	end
-
-	hook.Run("CFrame InitEntity", Entity, Physical)
-end
-
-local function Pop(Contraption, Entity, Parent) -- An entity is removed from a contraption
-	if Parent then Contraption.Ents.Parented[Entity] = nil
-			  else Contraption.Ents.Physical[Entity] = nil end
-
-	Contraption.Ents.Count = Contraption.Ents.Count-1
-
-	if Callbacks.OnDisconnect[Entity] then
-		Entity:OnDisconnect(Contraption, Parent)
-	end
-
-	HRUN("CFrame Disconnect", Contraption, Entity, Parent)
-
-	if Contraption.Ents.Count == 0 then DestroyContraption(Contraption) end
-
-	Entity.CFWRK.Contraption = nil
-	if not next(Entity.CFWRK.Connections) then Entity.CFWRK = nil end
-end
-
-local function Append(Contraption, Entity, Parent) -- An entity is added to an existing contraption
-	if Parent then Contraption.Ents.Parented[Entity] = true
-			  else Contraption.Ents.Physical[Entity] = true end
-
-	Contraption.Ents.Count = Contraption.Ents.Count + 1
-
-	Entity.CFWRK.Contraption = Contraption
-
-	if Callbacks.OnConnect[Entity] then
-		Entity:OnConnect(Contraption, Parent)
-	end
-
-	HRUN("CFrame Connect", Contraption, Entity, Parent)
-end
-
-local function Merge(A, B) -- Combine two contraptions and remove the smaller one
-	local Big, Small
-
-	if A.Ents.Count >= B.Ents.Count then Big, Small = A, B
-									else Big, Small = B, A end
-
-	for Ent in pairs(Small.Ents.Physical) do
-		Pop(Small, Ent)
-		Append(Big, Ent)
-	end
-
-	-- Contraption may have been comprised of only physical entities, and automatically removed when Pop was called on the last entity
-	-- Check if the contraption still exists, if it does, it's because there are parented entities in it
-	if Contraptions[Small] then
-		for Ent in pairs(Small.Ents.Parented) do
-			Pop(Small, Ent, true)
-			Append(Big, Ent, true)
+			return Out
 		end
 	end
 
-	return Big
-end
-
--------------------------------------------------- Logic
-
-
-local function FF(Entity, Filter) -- Flood filling. Depth first
-	if not IsValid(Entity) then return Filter end
-
-	Filter[Entity] = true
-
-	for K in pairs(Entity.CFWRK.Connections) do
-		if IsValid(K) and not Filter[K] then FF(K, Filter) end
+	do
+		function Contraption.GetAll()
+			return Contraption.Contraptions
+		end
 	end
-
-	return Filter
 end
 
-local function BFS(Start, Goal) -- Flood filling. Breadth first
+local function FloodFill(Ent, Output) -- Input a table to be used as output
+	Output[Ent] = true
+
+	for K in pairs(Ent.Connections) do
+		if IsValid(K) and not Output[K] then
+			FloodFill(K, Output)
+		end
+	end
+end
+
+--[[ Search if entity Source is connected indirectly to entity Sink
+	Breadth-first search in the assumption that most contraptions are made primarily of
+	small loops and not long chains
+
+	Returns true if connected
+	False, a new contraption, and the number in the contraption
+--]]
+local function Search(Source, Sink)
 	local Closed = {}
-	local Open   = {};	for K in pairs(Start.CFWRK.Connections) do Open[K] = true end -- Quick copy
-	local Count  = #Open
+	local Open   = {}; for K in pairs(Source.Connections) do Open[K] = true end -- Quick copy
 
 	while next(Open) do
 		local Node = next(Open)
@@ -152,341 +76,279 @@ local function BFS(Start, Goal) -- Flood filling. Breadth first
 		Open[Node] = nil
 
 		if not IsValid(Node) then continue end
-		if Node == Goal then return true end
+		if Node == Sink then return true end -- Found the sink
 
 		Closed[Node] = true
 
-		for K in pairs(Node.CFWRK.Connections) do
+		for K in pairs(Node.Connections) do
 			if not Closed[K] then
 				Open[K] = true
-				Count = Count + 1
 			end
 		end
 	end
 
-	return false, Closed, Count
+	return false, Closed -- Not connected
 end
 
-local function SetPhysical(Entity, Physical) -- Change the stored state of an entity
-	if Entity.CFWRK.IsPhysical == Physical then return end -- Ignore change if its already at desired state
+--
 
-	Entity.CFWRK.IsPhysical = Physical
+local function NewContraption()
+	local C = { Count = 0, Ents  = {} }
+		setmetatable(C, Meta)
 
-	local Ents = Entity.CFWRK.Contraption.Ents
+	Contraption.Contraptions[C] = true
+	Contraption.Count = Contraption.Count + 1
 
-	if Physical then
-		Ents.Parented[Entity] = nil
-		Ents.Physical[Entity] = true
-	else
-		Ents.Parented[Entity] = true
-		Ents.Physical[Entity] = nil
-	end
-
-	if Callbacks.OnPhysChange[Entity] then
-		Entity:OnPhysChange(Physical)
-	end
-
-	HRUN("CFrame PhysChange", Entity, Physical)
+	print("New Contraption", C)
+	return C
 end
 
-local function OnConnect(A, B, Parenting) -- Whenever entities are constrained/parented. In the case of parenting, A is the child and B the parent
-	local AC = A.CFWRK and A.CFWRK.Contraption or nil
-	local BC = B.CFWRK and B.CFWRK.Contraption or nil
+local function DeleteContraption(C) print("Delete Contraption", C)
+	Contraption.C     = nil
+	Contraption.Count = Contraption.Count - 1
+end
 
-	if AC and BC then
-		if Parenting and not HasConstraints(A) then -- Parenting with no constraints existing makes this not physical
-			SetPhysical(A, false)
-		elseif A:GetParent() then -- Being already parenting and adding a constraint makes this physical
-			SetPhysical(A, true)
+local function Append(C, A, Parent, State) print("Append", C, A, Parent, State)
+	A.Contraption = C
+	C.Count   	  = C.Count + 1
+
+	if State ~= nil then C.Ents[A] = State
+	elseif Parent then C.Ents[A] = false
+	else C.Ents[A] = true end
+
+	print("Set state to asd", C.Ents[A])
+
+	if Callbacks.Append[A] then A:OnContraptionAppend(C) end
+
+	hook.Run("OnContraptionAppend", C, A, Parent)
+end
+
+local function Pop(C, A, Merging) print("Pop", C, A)
+	local State = C.Ents[A]
+
+	A.Contraption = nil
+	C.Ents[A] 	  = nil
+	C.Count   	  = C.Count - 1
+
+	if not Merging then A.Connections = nil end -- We will clean up after ourselves, unlike gayry
+	if Callbacks.Pop[A] then A:OnContraptionPop(C) end
+
+	hook.Run("OnContraptionPop", C, A)
+
+	if C.Count == 0 then DeleteContraption(C) end
+
+	return State
+end
+
+local function Merge(A, B) print("Merge", A, B)
+	local CA, CB = A.Contraption, B.Contraption
+
+	if CA.Count < CB.Count then -- Merge CA into CB
+		for Ent in pairs(CA.Ents) do
+			Append(CB, Ent, nil, Pop(CA, Ent, true))
+		end
+	else -- Merge CB into CA
+		for Ent in pairs(CB.Ents) do
+			Append(CA, Ent, nil, Pop(CB, Ent, true))
+		end
+	end
+end
+
+local function Init(A) print("Init", A)
+	A.Connections = {}
+
+	if Callbacks.Init[A] then A:OnContraptionInit() end
+
+	hook.Run("OnContraptionInit", A)
+end
+
+local function SetState(A, State)
+	if A.Contraption.Ents[A] == State then return end -- State didn't change
+
+	A.Contraption.Ents[A] = State
+
+	if Callbacks.State[A] then A:OnContraptionState(State) end
+
+	hook.Run("OnContraptionState", A, State)
+end
+
+local function Connect(A, B, Parent) print("Connect", A, B, Parent) -- A is the child and B the parent
+	if A.Contraption and B.Contraption then print("Both have a contraption")
+		if Parent then -- Parent added to an already constrained entity
+			SetState(A, false) -- Not physical
+		elseif A:GetParent() then -- A is parented and a constraint was added
+			SetState(A, true) -- Making it physical
 		end
 
-		if AC ~= BC then Merge(AC, BC) end -- Merge the contraptions if they're not the same
-
-		-- Otherwise, do nothing, these two entities are already connected to the same contraption
-
-	elseif AC then
-		if Parenting and not HasConstraints(A) then
-			SetPhysical(A, false)
-		elseif A:GetParent() then
-			SetPhysical(A, true)
+		if A.Contraption ~= B.Contraption then print("Different contraptions") -- Two different contraptions
+			Merge(A, B) -- Merge them
 		end
+	elseif A.Contraption then print("A has a contraption")
+		Init(B)
 
-		Initialize(B, true) -- B is always the parent and is always physical at this point
-		Append(AC, B) -- Append B to contraption AC
-	elseif BC then
-		Initialize(A, not Parenting)
-		Append(BC, A, Parenting)
+		Append(A.Contraption, B)
+
+		if Parent then -- Parent added to an already constrained entity
+			SetState(A, false) -- Not physical
+		elseif A:GetParent() then -- A is parented and a constraint was added
+			SetState(A, true) -- Making it physical
+		end
+	elseif B.Contraption then print("B has a contraption")
+		Init(A)
+
+		Append(B.Contraption, A, Parent) -- A is added as a parented entity
 	else
-		-- Neither entity has a contraption, make a new one and add them to it
+		local C = NewContraption()
 
-		local Contraption = CreateContraption()
+		Init(A)
+		Init(B)
 
-		Initialize(A, not Parenting)
-		Initialize(B, true)
-
-		Append(Contraption, A, Parenting)
-		Append(Contraption, B)
+		Append(C, A, Parent)
+		Append(C, B)
 	end
 
-	local AConnect = A.CFWRK.Connections
-	local BConnect = B.CFWRK.Connections
-
-	AConnect[B] = (AConnect[B] or 0) + 1
-	BConnect[A] = (BConnect[A] or 0) + 1
+	A.Connections[B] = (A.Connections[B] or 0) + 1
+	B.Connections[A] = (B.Connections[A] or 0) + 1
 end
 
-local function OnDisconnect(A, B, Parenting) -- Whenever entities lose a contraint/parent.
-	-- Prove whether A is still connected to B or not
-	-- If not: A new contraption is created (Assuming A and B are both connected to more than one thing)
+local function Disconnect(A, B, Parent) print("Disconnect", A, B, Parent)
 
-	if Parenting then SetPhysical(A, true) end -- Removal of a parent makes A physical
+	local N = A.Connections[B] - 1
 
-	local AFrame       = A.CFWRK
-	local AConnections = AFrame.Connections
-	local BConnections = B.CFWRK.Connections
-	local Contraption  = AFrame.Contraption
+	if N > 0 then
+		A.Connections[B] = N
+		B.Connections[A] = N
 
-	if AConnections[B] > 1 then -- Check if the two entities are directly connected
-		local Num = AConnections[B]-1
+		if Parent then -- Was parented, is now physical
+			SetState(A, true)
+		elseif N == 1 and A:GetParent() then -- A is still parented but all constraints have been removed, making it not physical 
+			SetState(A, false)
+		end
 
-		AConnections[B] = Num
-		BConnections[A] = Num
-
-	else -- Check if the entities are indirectly connected
-
-		AConnections[B] = nil
-		BConnections[A] = nil
+		return -- Still directly connected
+	else -- Not directly connected... Check if indirectly connected
+		A.Connections[B] = nil
+		B.Connections[A] = nil
 
 		-- Check if the two entities are connected to anything at all
-		local SC
-			if not next(AConnections) then
-				Pop(Contraption, A)
-				SC = true
-			end
+		local C = A.Contraption
+		local ShortCircuit
 
-			if not next(BConnections) then
-				Pop(Contraption, B)
-				SC = true
-			end
-		if SC then return end -- One or both of the ents has nothing connected, no further checking needed
-
-		-- Handle parents with children
-		-- Parented Ents with no physical constraint always have only one connection to the contraption
-		-- If the thing removed was a parent and A is not physical then the two ents are definitely not connected
-		-- All entities in A's contraption must therefore be parented children and need to be transferred
-		if Parenting and not AFrame.IsPhysical then
-			local Collection = FF(A, {})
-			local To         = CreateContraption()
-			local From       = Contraption
-
-			for Ent in pairs(Collection) do -- Move all the ents connected to the Child to the new contraption
-				Pop(From, Ent)
-				Append(To, Ent)
-			end
-
-			return -- Short circuit
+		if not next(A.Connections) then
+			Pop(C, A)
+			ShortCircuit = true
 		end
 
-		-- Final test to prove the two Ents are no longer connected
-		-- Flood filling until we find the other entity
-		-- If the other entity is not found, the Ents collected during the flood fill are made into a new contraption
-		local Connected, Collection, Count = BFS(A, B)
-
-		if not Connected then -- The two Ents are no longer connected and we have created two separate contraptions
-			local To   = CreateContraption()
-			local From = Contraption
-
-			if From.Ents.Count - Count < Count then Collection = FF(B, {}) end -- If this side of the split contraption has more Ents use the other side instead
-
-			for Ent in pairs(Collection) do
-				Pop(From, Ent)
-				Append(To, Ent)
-			end
-		end
-	end
-end
-
--------------------------------------------------- Hooks
-
-hook.Add("OnEntityCreated", "CFrame Created", function(Constraint)
-	if ConstraintTypes[Constraint:GetClass()] then
-		-- We must wait because the Constraint's information is set after the constraint is created
-		timer.Simple(0, function()
-			if not IsValid(Constraint) then return end
-
-			Constraint.Initialized = true -- Required check for EntityRemoved to handle constraints created and deleted in the same tick
-
-			local A, B = Constraint.Ent1, Constraint.Ent2
-
-			if not IsValid(A) or not IsValid(B) then return end -- Contraptions consist of multiple ents not one
-			if A == B then return end -- We also don't care about constraints attaching an entity to itself, see above
-
-			OnConnect(A, B)
-			HRUN("OnConstraintCreated", Constraint)
-		end)
-	end
-end)
-
-hook.Add("EntityRemoved", "CFrame Removed", function(Entity)
-	if Entity.Initialized then -- Constraint being removed
-		local A, B = Entity.Ent1, Entity.Ent2
-
-		if not IsValid(A) or not IsValid(B) then return end
-		if A == B then return end -- We don't care about constraints attaching an entity to itself
-
-		OnDisconnect(A, B)
-		HRUN("OnConstraintRemoved", Entity)
-	elseif Entity.Constraints then -- Entity being removed
-		for _, Con in pairs(Entity.Constraints) do
-			if Con.Initialized then
-				Con.Initialized = nil -- Prevent redundant disconnects of this constraint
-				OnDisconnect(Con.Ent1, Con.Ent2)
-			end
-		end
-	end
-end)
-
-hook.Add("Initialize", "CFrame Init", function() -- We only want to detour the SetParent function once
-	local Meta = FindMetaTable("Entity")
-
-	Meta.LegacyParent = Meta.SetParent
-
-	function Meta:SetParent(Parent, Attachment)
-		local OldParent = self:GetParent()
-
-		if IsValid(OldParent) and not ParentFilter[OldParent:GetClass()] and not ParentFilter[self:GetClass()] then -- It's only an 'Unparent' if there was a previous parent
-			OnDisconnect(self, OldParent, true)
-			HRUN("OnUnparent", self, OldParent)
+		if not next(B.Connections) then
+			Pop(C, B)
+			ShortCircuit = true
 		end
 
-		self:LegacyParent(Parent, Attachment)
+		if ShortCircuit then return end
 
-		if IsValid(Parent) and not ParentFilter[Parent:GetClass()] and not ParentFilter[self:GetClass()] then
-			OnConnect(self, Parent, true)
-			HRUN("OnParent", self, Parent)
-		end
-	end
+		-- At this point: Both entities are not directly connected and are connected to other entities
 
-	function Meta:AddCFrameCallback(Callback)
-		if Callbacks[Callback] then
-			Callbacks[Callback][self] = true
-		else
-			error("AddCFrameCallback: invalid callback")
-		end
-	end
+		--[[ Handle parents with children
+			A (the child) is connected to something, but not its former parent.
+			This means it must have children. Split children into a new contraption.
+		--]]
+		if Parent then -- Unparent scenario
+			local Subtree = {}; FloodFill(A, Subtree)
+			local NewC    = NewContraption()
 
-	hook.Remove("Initialize", "CFrame Init") -- No reason to keep this in memory
-end)
-
--------------------------------------------------- Load Modules
-
-for _, V in pairs(file.Find("cframework/modules/*", "LUA")) do
-	if string.Left(V, 2) ~= "cl" then
-		MsgN("[CFrame] Mounting " .. V .. " module")
-		include("cframework/modules/" .. V)
-	else
-		MsgN("[CFrame] Sending " .. V .. " module")
-		AddCSLuaFile("cframework/modules/" .. V)
-	end
-end
-
--------------------------------------------------- Contraption Framework Library
-do
-	function cframe.GetAll() -- Return a table of all contraptions
-		return Contraptions
-	end
-
-	function cframe.Get(Entity) -- Return an entity's contraption
-		if not Entity then return end
-
-		return Entity.CFWRK and Entity.CFWRK.Contraption
-	end
-
-	function cframe.GetAllEntities(Var)
-		if not Var then return {} end
-
-		local Cont = Var.IsContraption and Var or cframe.Get(Var)
-		local Out  = {}
-
-		if Cont then
-			for K in pairs(Cont.Ents.Physical) do
-				Out[K] = true
+			for Ent in pairs(Subtree) do -- Move all the children to a new contraption
+				Append(NewC, Ent, nil, Pop(C, Ent, true))
 			end
 
-			if next(Cont.Ents.Parented) then
-				for K in pairs(Cont.Ents.Parented) do
-					Out[K] = true
+			hook.Run("OnContraptionSplit", C, Subtree)
+
+			SetState(A, true) -- A is now physical
+		else -- Constraint removed scenario
+			-- A cannot be parented during this scenario, so A is already physical
+
+			--[[ Test indirect connectivity
+				Breadth-First search to find other entity
+				If not connected, the subtree is made into a new contraption
+			--]]
+
+			local Connected, Subtree = Search(A, B)
+
+			if not Connected then
+				local NewC = NewContraption()
+
+				for Ent in pairs(Subtree) do
+					Append(NewC, Ent, nil, Pop(C, Ent, true))
 				end
 			end
 		end
-
-		return Out
 	end
-
-	function cframe.GetPhysicalEntities(Var)
-		if not Var then return {} end
-
-		local Cont = Var.IsContraption and Var or cframe.Get(Var)
-		local Out  = {}
-
-		if Cont then
-			for K in pairs(Cont.Ents.Physical) do
-				Out[K] = true
-			end
-		end
-
-		return Out
-	end
-
-	function cframe.GetParentedEntities(Var)
-		if not Var then return {} end
-
-		local Cont = Var.IsContraption and Var or cframe.Get(Var)
-		local Out  = {}
-
-		if Cont and next(Cont.Ents.Parented) then
-			for K in pairs(Cont.Ents.Parented) do
-				Out[K] = true
-			end
-		end
-
-		return Out
-	end
-
-	function cframe.GetConstraintTypes() -- Return a table of the constraint types cframe is monitoring
-		local Tab = {}
-
-		for K in pairs(ConstraintTypes) do
-			Tab[K] = true
-		end
-
-		return Tab
-	end
-
-	function cframe.AddConstraint(Class) -- Add a constraint to be monitored by cframe
-		ConstraintTypes[Class] = true
-	end
-
-	function cframe.RemoveConstraint(Class)
-		ConstraintTypes[Class] = nil
-	end
-
-	function cframe.HasConstraints(Entity) -- Returns bool whether an entity has constraints (that cframe monitors)
-		if not IsValid(Entity) then return false end
-		if not Entity.Constraints then return false end
-		if not next(Entity.Constraints) then return false end
-
-		for _, V in pairs(Entity.Constraints) do
-			if ConstraintTypes[V:GetClass()] then
-				return true
-			end
-		end
-
-		return false
-	end
-
-	HasConstraints = cframe.HasConstraints
 end
 
--------------------------------------------------- Run Initialize hook
-HRUN("CFrame Initialize")
+do -- Hooks -------------------------------------
+	local ConstraintTypes = { -- Note: no-collide is missing because no-collide is not a constraint
+		phys_lengthconstraint = true, phys_constraint = true, phys_hinge = true, phys_ragdollconstraint = true,
+		gmod_winch_controller = true, phys_spring = true, phys_slideconstraint = true, phys_torque = true,
+		phys_pulleyconstraint = true, phys_ballsocket = true
+	}
+	hook.Add("OnEntityCreated", "Contraption Framework", function(Ent)
+		if ConstraintTypes[Ent:GetClass()] then
+			TimerSimple(0, function()
+				if not IsValid(Ent) then return end
+
+				Ent.CFRAMEINIT = true -- Required check for the EntityRemoved hook to handle ents created and deleted in the same tick
+
+				local A, B = Ent.Ent1, Ent.Ent2
+
+				if not IsValid(A) or not IsValid(B) then return end -- Contraptions consist of multiple ents, not one
+				if A == B then return end
+
+				Connect(A, B)
+			end)
+
+			hook.Run("OnConstraintCreated", Ent)
+		end
+	end)
+
+	hook.Add("EntityRemoved", "Contraption Framework", function(Ent)
+		if Ent.CFRAMEINIT then
+			local A, B = Ent.Ent1, Ent.Ent2
+
+			if not IsValid(A) or not IsValid(B) then return end
+
+			Disconnect(A, B)
+
+			hook.Run("OnConstraintRemoved", Ent)
+		end
+	end)
+
+	hook.Add("Initialize", "Contraption Framework", function() -- Detouring SetParent
+		local ENT = FindMetaTable("Entity")
+		local P   = ENT.SetParent
+
+		local ParentFilter = {predicted_viewmodel = true, gmod_hands = true}
+
+		function ENT:SetParent(Parent, Attachment, ...) print("SetParent")
+			local OldParent = self:GetParent()
+			local Bad		= ParentFilter[self:GetClass()]
+
+
+			if not Bad and IsValid(OldParent) and not ParentFilter[OldParent:GetClass()] then -- Not bad at all...
+				print("Parent disconnect")
+				Disconnect(self, OldParent, true)
+
+				hook.Run("OnUnparent", self, OldParent)
+			end
+
+			P(self, Parent, Attachment, ...)
+
+			if not Bad and IsValid(Parent) and not ParentFilter[Parent:GetClass()] then print("OnParent")
+				print("Parent connect")
+				Connect(self, Parent, true)
+
+				hook.Run("OnParent", self, Parent)
+			end
+		end
+
+		hook.Remove("Initialize", "Contraption Framework") -- Not wasting memory like a good boy
+	end)
+end
