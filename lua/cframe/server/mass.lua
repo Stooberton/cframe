@@ -98,12 +98,12 @@ hook.Add("Initialize", "CFrame Mass Module", function() -- Detour SetMass
 	local setMass = PHYS.SetMass
 
 	function PHYS:SetMass(NewMass, ...)
-		if IsValid(self) then
-			local Ent = self:GetEntity()
+		local OldMass = self:GetMass()
+		local Ent     = self:GetEntity()
 
-			if Ent.CFW then
+		if hook.Run("OnSetMass", Ent, OldMass, NewMass) ~= false then
+			if IsValid(self) and Ent.CFW then
 				local Mass    = Ent.CFW.Contraption.Mass
-				local OldMass = self:GetMass()
 				local Delta   = NewMass - OldMass
 
 				local NewTotal = Mass.Total + Delta
@@ -112,18 +112,16 @@ hook.Add("Initialize", "CFrame Mass Module", function() -- Detour SetMass
 
 					Mass.Total = NewTotal
 
-					if CF.Physical then
+					if Ent.CFW.Physical then
 						Mass.Physical = Mass.Physical + Delta
 					else
 						Mass.Parented = Mass.Parented + Delta
 					end
-
-					hook.Run("OnSetMass", self, OldMass, NewMass)
 				end
 			end
-		end
 
-		setMass(self, NewMass, ...)
+			setMass(self, NewMass, ...)
+		end
 	end
 
 	hook.Remove("Initialize", "CFrame Mass Module")
