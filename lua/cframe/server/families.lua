@@ -96,3 +96,17 @@ hook.Add("OnContraptionMerge", "Families", function(Kept, Removed) -- Transfer f
         Removed.Families = nil
     end
 end)
+
+hook.Add("Initialize", "CFW Families", function()
+    local ENT = FindMetaTable("Entity")
+
+    function ENT:GetAncestor()
+        if self.CFW then
+            return self.CFW.Ancestor or self
+        else
+            return self
+        end
+    end
+
+    hook.Remove("Initialize", "CFW Families")
+end)
