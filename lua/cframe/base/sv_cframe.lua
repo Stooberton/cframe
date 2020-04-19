@@ -53,7 +53,7 @@ end
 -- Main -----------------------------------------
 
 local function NewContraption()
-	local C = { Count = 0, Ents  = {}, IsContraption = true }
+	local C = { Count = 0, Constraints = 0, Ents  = {}, IsContraption = true }
 
 	Contraption.Contraptions[C] = true
 	Contraption.Count = Contraption.Count + 1
@@ -204,6 +204,11 @@ local function Connect(A, B, Parent)
 
 	if A.OnContraptionConnect then A:OnContraptionConnect(B, Parent) end
 	hook.Run("OnContraptionConnect", A, B, Parent)
+
+	local C = A.CFW.Contraption
+		C.Constraints = C.Constraints + 1
+
+	return C
 end
 
 --[[ Whenever a connection is removed between two entities
@@ -216,7 +221,10 @@ local function Disconnect(A, B, Parent) print("Disconnect")
 	if A.OnContraptionDisconnect then A.OnContraptionDisconnect(B, Parent) end
 	hook.Run("OnContraptionDisconnect", A, B, Parent)
 
+	local C = A.CFW.Contraption
 	local N = A.CFW.Connections[B] - 1
+
+	C.Constraints = C.Constraints - 1
 
 	if N > 0 then
 		A.CFW.Connections[B] = N
@@ -234,7 +242,6 @@ local function Disconnect(A, B, Parent) print("Disconnect")
 		B.CFW.Connections[A] = nil
 
 		-- Check if the two entities are connected to anything at all
-		local C = A.CFW.Contraption
 		local ShortCircuit
 
 		if not next(A.CFW.Connections) then
@@ -260,14 +267,14 @@ local function Disconnect(A, B, Parent) print("Disconnect")
 
 			SetState(A, true) -- A is now physical
 
-			Split(A.CFW.Contraption, Subtree)
+			Split(C, Subtree)
 		else -- Constraint removed scenario
 			-- A cannot be parented during this scenario, so A is already physical
 
 			local Connected, Subtree = Search(A, B)
 
 			if not Connected then
-				Split(A.CFW.Contraption, Subtree)
+				Split(C, Subtree)
 			end
 		end
 	end
