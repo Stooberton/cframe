@@ -92,7 +92,6 @@ local function SetState(A, State)
 end
 
 local function Append(C, A)
-	print("Append", C, A)
 	A.CFW.Contraption = C
 	C.Ents[A]		  = true
 	C.Count   	  	  = C.Count + 1
@@ -101,11 +100,9 @@ local function Append(C, A)
 	hook.Run("OnContraptionAppend", C, A)
 end
 
-local function Pop(C, A) print("Pop", C, A)
+local function Pop(C, A)
 	C.Ents[A] = nil
 	C.Count   = C.Count - 1
-
-	print(C.Count)
 
 	if A.OnContraptionPop then A:OnContraptionPop(C) end
 	hook.Run("OnContraptionPop", C, A)
@@ -179,7 +176,7 @@ local function Connect(A, B, Parent)
 		end
 	end
 
-	if AC and BC then print("Two Contraptions")
+	if AC and BC then
 		if AC ~= BC then -- Two different contraptions. Merge them
 			if AC.Count > BC.Count then
 				Merge(AC, BC)
@@ -187,16 +184,16 @@ local function Connect(A, B, Parent)
 				Merge(BC, AC)
 			end
 		end
-	elseif AC then print("A contraption")
+	elseif AC then
 
 		Append(AC, B)
-	elseif BC then print("B contraption")
+	elseif BC then
 		Append(BC, A)
-	else print("New contraption")
-		local C = NewContraption()
+	else
+		local NewC = NewContraption()
 
-		Append(C, A)
-		Append(C, B)
+		Append(NewC, A)
+		Append(NewC, B)
 	end
 
 	ACon[B] = (ACon[B] or 0) + 1
@@ -217,7 +214,7 @@ end
 		Pop (An entity is removed from a contraption)
 		Nothing (Entities are still connected)
 --]]
-local function Disconnect(A, B, Parent) print("Disconnect")
+local function Disconnect(A, B, Parent)
 	if A.OnContraptionDisconnect then A.OnContraptionDisconnect(B, Parent) end
 	hook.Run("OnContraptionDisconnect", A, B, Parent)
 
