@@ -127,6 +127,8 @@ local function Merge(A, B)
 		B.Ents[Ent] = nil
 
 		Ent.CFW.Contraption = A
+
+		if Ent.OnContraptionTransfer then Ent:OnContraptionTransfer(A, B) end
 	end
 
 	DeleteContraption(B)
@@ -142,6 +144,8 @@ local function Split(C, Ents)
 
 		Ent.CFW.Contraption = NewC
 		Count = Count + 1
+
+		if Ent.OnContraptionTransfer then Ent:OnContraptionTransfer(NewC, C) end
 	end
 
 	C.Count    = C.Count - Count
