@@ -203,7 +203,10 @@ local function Connect(A, B, Parent)
 	hook.Run("OnContraptionConnect", A, B, Parent)
 
 	local C = A.CFW.Contraption
+
+	if not Parent then
 		C.Constraints = C.Constraints + 1
+	end
 
 	return C
 end
@@ -221,7 +224,9 @@ local function Disconnect(A, B, Parent)
 	local C = A.CFW.Contraption
 	local N = A.CFW.Connections[B] - 1
 
-	C.Constraints = C.Constraints - 1
+	if not Parent then
+		C.Constraints = C.Constraints - 1
+	end
 
 	if N > 0 then
 		A.CFW.Connections[B] = N
