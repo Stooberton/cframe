@@ -128,47 +128,15 @@ hook.Add("Initialize", "CFrame Mass Module", function() -- Detour SetMass
 end)
 
 do -- Library -----------------------------------
-	function Contraption.GetMass(Var)
-		if not Var then return 0 end
-
-		if Var.IsContraption then -- Is a contraption table
-			return Var.Mass.Total
-		elseif Var.CFW then -- Is an entity
-			return Var.CFW.Contraption.Mass.Total
-		elseif type(Var) == "Entity" then
-			local Phys = Var:GetPhysicsObject()
-
-			return IsValid(Phys) and Phys:GetMass() or 0
-		else
-			return 0
-		end
+	function Contraption.GetMass(C)
+		return C.Mass.Total
 	end
 
-	function Contraption.GetPhysicalMass(Var)
-		if not Var then return 0 end
-
-		if Var.IsContraption then
-			return Var.Mass.Physical
-		elseif Var.CFW then
-			return Var.CFW.Contraption.Mass.Physical
-		elseif type(Var) == "Entity" then
-			local Phys = Var:GetPhysicsObject()
-
-			return IsValid(Phys) and Phys:GetMass() or 0
-		else
-			return 0
-		end
+	function Contraption.GetPhysicalMass(C)
+		return C.Mass.Physical
 	end
 
-	function Contraption.GetParentedMass(Var)
-		if not Var then return 0 end
-
-		if Var.IsContraption then
-			return Var.Mass.Parented
-		elseif Var.CFWRK then
-			return Var.CFWRK.Contraption.Mass.Parented
-		else
-			return 0
-		end
+	function Contraption.GetParentedMass(C)
+		return C.Mass.Parented
 	end
 end
