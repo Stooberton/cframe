@@ -171,8 +171,8 @@ hook.Add("Initialize", "CFW Families", function()
 			Output = {}
 		end
 
-		for K in pairs(self:GetChildren()) do
-			K:GetAllChildren(Output)
+		for _, V in pairs(self:GetChildren()) do
+			V:GetAllChildren(Output)
 		end
 
 		return Output
