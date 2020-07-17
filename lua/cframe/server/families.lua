@@ -124,7 +124,7 @@ hook.Add("OnContraptionDisconnect", "Families", function(A, _, Parent)
 end)
 
 hook.Add("OnContraptionSplit", "Families", function(Old, New) -- Transfer families that have been split off
-	if Old.Families then -- If there are any families
+	if New and Old.Families then -- If there are any families
 		New.Families = New.Families or {}
 
 		for Family in pairs(Old.Families) do -- Go over each one
