@@ -124,11 +124,13 @@ hook.Add("OnContraptionDisconnect", "Families", function(A, _, Parent)
 end)
 
 hook.Add("OnContraptionSplit", "Families", function(Old, New) -- Transfer families that have been split off
-	if New and Old.Families then -- If there are any families
+	if Old.Families then -- If there are any families
 		New.Families = New.Families or {}
 
 		for Family in pairs(Old.Families) do -- Go over each one
-			if New.Ents[next(Family):GetAncestor()] then -- If the ancestor is in the new contraption
+			local Ent = next(Family)
+
+			if Ent and New.Ents[Ent:GetAncestor()] then -- If the ancestor is in the new contraption
 				Old.Families[Family] = nil
 				New.Families[Family] = true -- Transfer family to the new one
 			end
