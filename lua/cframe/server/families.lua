@@ -106,7 +106,10 @@ hook.Add("OnContraptionDisconnect", "Families", function(A, _, Parent)
 
 			for Ent in pairs(Children) do -- Remove from Ancestor's family
 				AncFam[Ent]      = nil
-				Ent.CFW.Ancestor = A
+
+				if Ent.CFW then
+					Ent.CFW.Ancestor = A
+				end
 			end
 
 			A.CFW.Family = Children
